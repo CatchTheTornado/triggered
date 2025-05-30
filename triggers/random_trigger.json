@@ -4,7 +4,7 @@
         "name": "random_number_trigger",
         "model": "local",
         "interval": 60,
-        "prompt": "Generate a random number between 1 and 10. If the number is greater than 7, trigger the action.",
+        "prompt": "Generate a random number between 1 and 10. Make the decision based on the number - if >=5 then trigger otherwise don't trigger",
         "tools": [
             {
                 "type": "random_number"

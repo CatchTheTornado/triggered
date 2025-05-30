@@ -45,10 +45,10 @@ class AITrigger(Trigger):
 
         # Template source and variables -----------------------------------
         DEFAULT_TEMPLATE = (
-            "{{ custom_prompt }}\n\n"
+            "Your role is to decide whether to trigger an action based on the user prompt:  <user-prompt> {{ custom_prompt }} </user-prompt>\n\n"
             "Respond ONLY with JSON in the following schema:\n\n"
             "{ \"trigger\": <true|false>, "
-            "\"reason\": \"<short explanation>\" }"
+            "\"reason\": \"<short explanation why you made the decision>\" }"
         )
 
         if "prompt_template_file" in config:
