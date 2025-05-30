@@ -1,8 +1,13 @@
-from typing import Dict, Type, Any
+from typing import Dict, Type, Any, Callable
 import datetime as _dt
 from pydantic import BaseModel, Field
 import httpx
 import os
+import importlib.util
+import inspect
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ToolInput(BaseModel):
@@ -80,16 +85,41 @@ AVAILABLE_TOOLS: Dict[str, Type[BaseTool]] = {
 }
 
 
-def create_tool(tool_config: Dict[str, Any]) -> BaseTool:
-    """Create a tool instance from configuration."""
-    tool_type = tool_config.get("type")
-    if not tool_type or tool_type not in AVAILABLE_TOOLS:
-        raise ValueError(f"Unknown tool type: {tool_type}")
+def register_tool(tool_type: str, tool_class: Type[BaseTool]) -> None:
+    """Register a new tool type at runtime.
     
-    tool_cls = AVAILABLE_TOOLS[tool_type]
-    return tool_cls()
+    Parameters
+    ----------
+    tool_type : str
+        The type identifier for the tool
+    tool_class : Type[BaseTool]
+        The tool class to register
+    """
+    if not issubclass(tool_class, BaseTool):
+        raise ValueError(f"Tool class must inherit from BaseTool")
+    
+    AVAILABLE_TOOLS[tool_type] = tool_class
+    logger.info(f"Registered new tool type: {tool_type}")
 
 
+def load_tools_from_module(module_path: str) -> None:
+    """Load tool classes from a Python module.
+    
+    Parameters
+    ----------
+    module_path : str
+        Path to the Python module containing tool classes
+    """
+    try:
+        spec = importlib.util.spec_from_file_location("tools_module", module_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load module from {module_path}")
+        
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # Find all BaseTool subclasses in the module
+        for name, obj in inspect.getmembers(module):
 def get_tools(tool_configs: list[Dict[str, Any]]) -> Dict[str, BaseTool]:
     """Create tool instances from configuration list."""
     tools = {}

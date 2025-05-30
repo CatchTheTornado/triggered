@@ -1,0 +1,18 @@
+{
+    "trigger_type": "ai",
+    "trigger_config": {
+        "name": "random_number_trigger",
+        "model": "local",
+        "interval": 60,
+        "prompt": "Generate a random number between 1 and 10. If the number is greater than 7, trigger the action.",
+        "tools": [
+            {
+                "type": "random_number"
+            }
+        ]
+    },
+    "action_type": "shell",
+    "action_config": {
+        "command": "echo 'Got a high number!'"
+    }
+} 

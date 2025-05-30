@@ -9,7 +9,7 @@ import logging
 from ..core import Trigger, TriggerContext
 from ..registry import register_trigger
 from ..models import get_model, OllamaModel
-from ..tools import get_tools, get_ollama_tools
+from ..tools import get_tools, get_ollama_tools, load_tools_from_module
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class AITrigger(Trigger):
     - model: str (optional, default "local")
     - interval: int seconds between evaluations (default 60)
     - tools: list of tool configurations (optional)
+    - custom_tools_path: str (optional) path to Python module with custom tools
     """
 
     def __init__(self, config: Dict[str, Any]):
@@ -31,6 +32,16 @@ class AITrigger(Trigger):
         self.interval: int = int(config.get("interval", 60))
         self.model = get_model(self.model_name)
         self.tool_configs = config.get("tools", [])
+        
+        # Load custom tools if specified
+        custom_tools_path = config.get("custom_tools_path")
+        if custom_tools_path:
+            try:
+                load_tools_from_module(custom_tools_path)
+            except Exception as e:
+                logger.error(f"Failed to load custom tools: {e}")
+                raise
+
         # Template source and variables -----------------------------------
         DEFAULT_TEMPLATE = (
             "{{ custom_prompt }}\n\n"
