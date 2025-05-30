@@ -8,6 +8,6 @@
   
     "action_type": "shell",
     "action_config": {
-      "command": "ps axu"
+      "command": "ls -lah"
     }
   }

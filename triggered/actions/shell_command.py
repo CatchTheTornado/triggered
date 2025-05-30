@@ -16,7 +16,7 @@ class ShellCommandAction(Action):
     - command: str
     """
 
-    async def execute(self, ctx: TriggerContext) -> None:  # noqa: D401
+    async def execute(self, ctx: TriggerContext) -> dict:  # noqa: D401
         command: str = self.config["command"].format(**ctx.data)
         logger.info("Executing shell command: %s", command)
         proc = await asyncio.create_subprocess_shell(
@@ -27,4 +27,9 @@ class ShellCommandAction(Action):
         stdout, stderr = await proc.communicate()
         logger.info("Shell stdout: %s", stdout.decode())
         if stderr:
-            logger.error("Shell stderr: %s", stderr.decode()) 
+            logger.error("Shell stderr: %s", stderr.decode())
+        return {
+            "stdout": stdout.decode(),
+            "stderr": stderr.decode(),
+            "returncode": proc.returncode,
+        } 

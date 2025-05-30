@@ -90,7 +90,7 @@ async def _execute_ta_once(ta_path: Path):
     """Load a TriggerAction JSON file and execute once synchronously."""
 
     from .registry import get_trigger, get_action
-    from .core import TriggerAction, TriggerContext
+    from .core import TriggerAction
 
     data = json.loads(ta_path.read_text())
     ta = TriggerAction.model_validate(data)  # type: ignore[attr-defined]
@@ -104,10 +104,18 @@ async def _execute_ta_once(ta_path: Path):
     ctx = None
     if hasattr(trigger, "check"):
         ctx = await trigger.check()
-    if ctx is None:
-        ctx = TriggerContext(trigger_name=ta.trigger_type)
+    if ctx is None or not ctx.data.get("trigger", True):
+        reason = ctx.data.get("reason", "") if ctx else "condition not met"
+        print("Trigger skipped –", reason)
+        print("LLM raw:", ctx.data.get("raw", "") if ctx else "")
+        return
 
-    await action.execute(ctx)
+    print("Reason:", ctx.data.get("reason", ""))
+    print("LLM raw:", ctx.data.get("raw", ""))
+    result = await action.execute(ctx)
+    if result:
+        print("Result:")
+        print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":  # pragma: no cover

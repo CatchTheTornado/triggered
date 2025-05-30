@@ -102,6 +102,19 @@ class OllamaModel(BaseModelAdapter):
         payload = {"model": self.model, "prompt": prompt, "stream": False}
         async with httpx.AsyncClient() as client:
             resp = await client.post(url, json=payload, timeout=60)
+            if resp.status_code == 500:
+                # try pulling model then retry once
+                pull_url = f"{self.base_url}/api/pull"
+                logger.info(
+                    "Model %s missing, attempting ollama pull…",
+                    self.model,
+                )
+                await client.post(
+                    pull_url,
+                    json={"model": self.model},
+                    timeout=300,
+                )
+                resp = await client.post(url, json=payload, timeout=60)
             resp.raise_for_status()
             data = resp.json()
             return data.get("response", "")
