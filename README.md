@@ -20,9 +20,24 @@ Triggered is a runtime engine similar to cron, but designed for the AI era. It e
 $ git clone https://github.com/yourname/triggered.git
 $ cd triggered
 
-# Install runtime deps
-$ poetry install --with local-model  # add --without local-model to skip local LLM support
+# Option 1 – One-shot helper script (recommended)
+$ chmod +x scripts/install.sh
+$ ./scripts/install.sh           # full setup (installs Redis if missing)
+
+# Option 1b – Lightweight (no Redis)
+$ NO_REDIS=1 ./scripts/install.sh  # uses Celery's in-memory broker
+
+# Option 2 – Manual Poetry install
+$ poetry install --extras "local-model"
 ```
+
+The installer will:
+1. Ensure Poetry is present
+2. Install all Python dependencies
+3. (Optionally) install & start Redis, or fall back to an in-process `memory://` broker when `NO_REDIS=1` is set
+4. Start the FastAPI API server and a Celery worker
+
+The first time an AI trigger/action runs, the required GGUF model is automatically pulled from Hugging Face via `llama-cpp-python`.
 
 ## Quick start
 
@@ -51,3 +66,26 @@ triggered/
 
 ## License
 MIT 
+
+## Example: AI-driven process listing
+
+The snippet below adds a trigger that asks a local LLM every minute whether it should list running processes.  When the model answers **yes** the Shell action executes `ps axu`.
+
+Save as `triggers/ai-ps.json` (or POST to `/triggers`).  The runtime will pick it up automatically on startup.
+
+```jsonc
+{
+  "trigger_type": "ai",
+  "trigger_config": {
+    "prompt": "Answer ONLY yes or no. Should I list running processes?",
+    "model": "local",
+    "interval": 60
+  },
+  "action_type": "shell",
+  "action_config": {
+    "command": "ps axu"
+  }
+}
+```
+
+You'll see the command output in the Celery worker logs each time the AI decides to fire. 

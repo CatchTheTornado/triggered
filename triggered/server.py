@@ -6,16 +6,23 @@ from pathlib import Path
 from typing import Dict, List
 
 from fastapi import FastAPI, HTTPException, Request
-from opentelemetry import trace  # type: ignore
-from opentelemetry.instrumentation.fastapi import (  # type: ignore
-    FastAPIInstrumentor,
-)
-from opentelemetry.sdk.resources import Resource  # type: ignore
-from opentelemetry.sdk.trace import TracerProvider  # type: ignore
-from opentelemetry.sdk.trace.export import (  # type: ignore
-    BatchSpanProcessor,
-    ConsoleSpanExporter,
-)
+try:
+    from opentelemetry import trace  # type: ignore
+    from opentelemetry.instrumentation.fastapi import (  # type: ignore
+        FastAPIInstrumentor,
+    )
+    from opentelemetry.sdk.resources import Resource  # type: ignore
+    from opentelemetry.sdk.trace import TracerProvider  # type: ignore
+    from opentelemetry.sdk.trace.export import (  # type: ignore
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+    )
+except ImportError:  # pragma: no cover
+    trace = None  # type: ignore
+    FastAPIInstrumentor = None  # type: ignore
+    Resource = None  # type: ignore
+    TracerProvider = None  # type: ignore
+    BatchSpanProcessor = ConsoleSpanExporter = None  # type: ignore
 
 from .core import TriggerAction
 from .queue import execute_action
@@ -29,13 +36,19 @@ TRIGGER_DIR.mkdir(parents=True, exist_ok=True)
 app = FastAPI(title="Triggered Runtime Engine")
 
 # Setup OpenTelemetry console exporter (for demo)
-resource = Resource.create({"service.name": "triggered"})
-provider = TracerProvider(resource=resource)
-processor = BatchSpanProcessor(ConsoleSpanExporter())
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
-FastAPIInstrumentor.instrument_app(app)
-tracer = trace.get_tracer(__name__)
+if trace and FastAPIInstrumentor:
+    processor = BatchSpanProcessor(ConsoleSpanExporter())
+    provider = TracerProvider(
+        resource=Resource.create({"service.name": "triggered"}),
+    )
+    provider.add_span_processor(
+        processor,
+    )
+    trace.set_tracer_provider(provider)
+    FastAPIInstrumentor.instrument_app(app)
+    tracer = trace.get_tracer(__name__)
+else:
+    tracer = None
 
 # In-memory store of recent events
 RECENT_EVENTS: List[Dict] = []

@@ -1,0 +1,13 @@
+{
+    "trigger_type": "ai",
+    "trigger_config": {
+      "model": "local",
+      "prompt": "Answer ONLY yes or no. Should I list running processes?",
+      "interval": 60
+    },
+  
+    "action_type": "shell",
+    "action_config": {
+      "command": "ps axu"
+    }
+  }

@@ -21,8 +21,29 @@ try:
     from llama_cpp import Llama  # noqa: WPS433
 
     class LlamaCppModel(BaseModelAdapter):
-        def __init__(self, model_path: str):
-            self._llm = Llama(model_path=model_path, n_threads=4)
+        """Adapter that lazy-loads a GGUF model from Hugging Face Hub using
+        the built-in *from_pretrained* helper so we don't have to download
+        files manually in the install script.
+
+        Parameters
+        ----------
+        repo_id: str
+            HF repository slug (``owner/repo``) containing the GGUF file.
+        filename: str
+            Name of the GGUF file inside the repo.
+        """
+
+        def __init__(
+            self,
+            repo_id: str = "bartowski/microsoft_Phi-4-mini-instruct-GGUF",
+            filename: str = "microsoft_Phi-4-mini-instruct-IQ2_M.gguf",
+            n_threads: int = 4,
+        ) -> None:
+            self._llm = Llama.from_pretrained(
+                repo_id=repo_id,
+                filename=filename,
+                n_threads=n_threads,
+            )
 
         async def ainvoke(self, prompt: str, **kwargs):  # noqa: D401
             # llama-cpp is sync; offload to thread pool
@@ -48,9 +69,7 @@ def get_model(name: str = "local") -> BaseModelAdapter:
             )
             model = DummyModel()
         else:
-            # For demo, attempt to load a placeholder gguf path,
-            # in production the model path should be configurable.
-            model = LlamaCppModel(model_path="phi-4-mini.gguf")
+            model = LlamaCppModel()
     else:
         # For unknown models we return DummyModel; extend as needed.
         model = DummyModel()

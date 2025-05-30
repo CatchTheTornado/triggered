@@ -17,22 +17,16 @@ if ! command -v poetry >/dev/null 2>&1; then
 fi
 
 # 2. Download local LLM model ------------------------------------------------
-MODEL_DIR="models"
-MODEL_FILE="phi-4-mini.gguf"
-MODEL_PATH="$MODEL_DIR/$MODEL_FILE"
-MODEL_URL="https://huggingface.co/TheBloke/phi-2-GGUF/resolve/main/phi-2-mini.gguf"
+# 2. Local LLM download is handled automatically by llama_cpp via
+#    Llama.from_pretrained (see triggered/models). Keeping this section empty
+#    to avoid unnecessary manual downloads; override via environment if you
+#    still want to pre-download:
 
-mkdir -p "$MODEL_DIR"
-if [ ! -f "$MODEL_PATH" ]; then
-  echo "[+] Downloading local model to $MODEL_PATH… (≈400 MB)"
-  curl -L "$MODEL_URL" -o "$MODEL_PATH"
-else
-  echo "[=] Model already present: $MODEL_PATH"
-fi
+echo "[=] Model will be auto-downloaded on first use via llama_cpp"
 
 # 3. Install Python dependencies -------------------------------------------
 echo "[+] Installing Python dependencies via Poetry…"
-poetry install --with local-model
+poetry install --extras "local-model"
 
 # 4. (Optional) Install & start Redis ---------------------------------------
 if [ "${NO_REDIS:-0}" != "1" ]; then
