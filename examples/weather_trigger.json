@@ -1,0 +1,21 @@
+{
+    "trigger_type": "ai",
+    "trigger_config": {
+        "name": "cloudy_weather_trigger",
+        "model": "local",
+        "interval": 300,
+        "prompt": "Check if it's cloudy in {{ city }}. Use the weather tool to get current conditions. If the weather is cloudy, trigger the action.",
+        "prompt_vars": {
+            "city": "London"
+        },
+        "tools": [
+            {
+                "type": "weather"
+            }
+        ]
+    },
+    "action_type": "shell",
+    "action_config": {
+        "command": "echo 'It's cloudy in {{ city }}! Time to bring an umbrella.'"
+    }
+} 

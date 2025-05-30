@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Dict
 import os
-import httpx
+import ollama
 
 logger = logging.getLogger(__name__)
 
@@ -97,27 +97,29 @@ class OllamaModel(BaseModelAdapter):
         self.model = model or os.getenv("OLLAMA_MODEL", "phi4-mini")
         self.base_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
-    async def ainvoke(self, prompt: str, **kwargs):  # noqa: D401
-        url = f"{self.base_url}/api/generate"
-        payload = {"model": self.model, "prompt": prompt, "stream": False}
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json=payload, timeout=60)
-            if resp.status_code == 500:
-                # try pulling model then retry once
-                pull_url = f"{self.base_url}/api/pull"
+    async def ainvoke(self, prompt: str, tools: list | None = None) -> str:
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            resp = await ollama.chat(
+                model=self.model,
+                messages=messages,
+                tools=tools
+            )
+            return resp.get("message", {}).get("content", "")
+        except Exception as e:
+            if "model not found" in str(e).lower():
                 logger.info(
                     "Model %s missing, attempting ollama pull…",
                     self.model,
                 )
-                await client.post(
-                    pull_url,
-                    json={"model": self.model},
-                    timeout=300,
+                await ollama.pull(self.model)
+                resp = await ollama.chat(
+                    model=self.model,
+                    messages=messages,
+                    tools=tools
                 )
-                resp = await client.post(url, json=payload, timeout=60)
-            resp.raise_for_status()
-            data = resp.json()
-            return data.get("response", "")
+                return resp.get("message", {}).get("content", "")
+            raise
 
 
 # fallback detection

@@ -1,6 +1,6 @@
 import asyncio
 from typing import Dict, Any
-from jinja2 import Template
+from jinja2 import Environment
 import json
 import os
 from pathlib import Path
@@ -8,7 +8,8 @@ import logging
 
 from ..core import Trigger, TriggerContext
 from ..registry import register_trigger
-from ..models import get_model
+from ..models import get_model, OllamaModel
+from ..tools import get_tools, get_ollama_tools
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class AITrigger(Trigger):
     - prompt: str
     - model: str (optional, default "local")
     - interval: int seconds between evaluations (default 60)
-    - tools: list (optional)
+    - tools: list of tool configurations (optional)
     """
 
     def __init__(self, config: Dict[str, Any]):
@@ -29,7 +30,7 @@ class AITrigger(Trigger):
         self.model_name: str = config.get("model", "local")
         self.interval: int = int(config.get("interval", 60))
         self.model = get_model(self.model_name)
-        self.tools = config.get("tools", [])
+        self.tool_configs = config.get("tools", [])
         # Template source and variables -----------------------------------
         DEFAULT_TEMPLATE = (
             "{{ custom_prompt }}\n\n"
@@ -71,13 +72,20 @@ class AITrigger(Trigger):
 
     async def _evaluate(self):
         # Render prompt with Jinja2
-        template = Template(self.template_source)
+        env = Environment()
+        env.globals.update(get_tools(self.tool_configs))
+        template = env.from_string(self.template_source)
         prompt_vars = {**self.prompt_vars, **os.environ}
         prompt = template.render(**prompt_vars)
 
-        response = await self.model.ainvoke(prompt)
+        # Convert tools to Ollama format if using Ollama model
+        tools = None
+        if isinstance(self.model, OllamaModel):
+            tools = get_ollama_tools(self.tool_configs)
 
-        def _strip_fences(text: str) -> str:
+        response = await self.model.ainvoke(prompt, tools=tools)
+
+        def _strip_fences(text: str):
             txt = text.strip()
             if txt.startswith("```") and txt.endswith("```"):
                 # remove leading and trailing backticks
