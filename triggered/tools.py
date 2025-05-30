@@ -1,4 +1,4 @@
-from typing import Dict, Type, Any, Callable
+from typing import Dict, Type, Any
 import datetime as _dt
 from pydantic import BaseModel, Field
 import httpx
@@ -6,6 +6,7 @@ import os
 import importlib.util
 import inspect
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,18 @@ class WeatherInput(ToolInput):
     city: str = Field(
         ...,
         description="The name of the city to check weather for"
+    )
+
+
+class RandomNumberInput(ToolInput):
+    """Input schema for RandomNumberTool."""
+    min_value: int = Field(
+        1,
+        description="Minimum value (inclusive)"
+    )
+    max_value: int = Field(
+        100,
+        description="Maximum value (inclusive)"
     )
 
 
@@ -78,10 +91,24 @@ class WeatherTool(BaseTool):
                 return f"Error fetching weather: {str(e)}"
 
 
+class RandomNumberTool(BaseTool):
+    name: str = "random_number"
+    description: str = "Generates a random number within a specified range"
+    args_schema: Type[BaseModel] = RandomNumberInput
+
+    async def _run(self, min_value: int = 1, max_value: int = 100) -> str:
+        try:
+            number = random.randint(min_value, max_value)
+            return str(number)
+        except Exception as e:
+            return f"Error generating random number: {str(e)}"
+
+
 # Available tool classes that can be instantiated
 AVAILABLE_TOOLS: Dict[str, Type[BaseTool]] = {
     "currentdate": CurrentDateTool,
-    "weather": WeatherTool
+    "weather": WeatherTool,
+    "random_number": RandomNumberTool
 }
 
 
@@ -96,10 +123,10 @@ def register_tool(tool_type: str, tool_class: Type[BaseTool]) -> None:
         The tool class to register
     """
     if not issubclass(tool_class, BaseTool):
-        raise ValueError(f"Tool class must inherit from BaseTool")
+        raise ValueError("Tool class must inherit from BaseTool")
     
     AVAILABLE_TOOLS[tool_type] = tool_class
-    logger.info(f"Registered new tool type: {tool_type}")
+    logger.info("Registered new tool type: %s", tool_type)
 
 
 def load_tools_from_module(module_path: str) -> None:
@@ -111,7 +138,10 @@ def load_tools_from_module(module_path: str) -> None:
         Path to the Python module containing tool classes
     """
     try:
-        spec = importlib.util.spec_from_file_location("tools_module", module_path)
+        spec = importlib.util.spec_from_file_location(
+            "tools_module", 
+            module_path
+        )
         if spec is None or spec.loader is None:
             raise ImportError(f"Could not load module from {module_path}")
         
@@ -120,6 +150,43 @@ def load_tools_from_module(module_path: str) -> None:
         
         # Find all BaseTool subclasses in the module
         for name, obj in inspect.getmembers(module):
+            if (inspect.isclass(obj) and 
+                    issubclass(obj, BaseTool) and 
+                    obj != BaseTool):
+                register_tool(obj.name, obj)
+    except Exception as e:
+        logger.error(
+            "Failed to load tools from module %s: %s", 
+            module_path, 
+            e
+        )
+        raise
+
+
+def create_tool(config: Dict[str, Any]) -> BaseTool:
+    """Create a tool instance from configuration.
+    
+    Parameters
+    ----------
+    config : Dict[str, Any]
+        Tool configuration dictionary
+        
+    Returns
+    -------
+    BaseTool
+        Instantiated tool
+    """
+    tool_type = config.get("type")
+    if not tool_type:
+        raise ValueError("Tool configuration must include 'type'")
+        
+    tool_class = AVAILABLE_TOOLS.get(tool_type)
+    if not tool_class:
+        raise ValueError(f"Unknown tool type: {tool_type}")
+        
+    return tool_class()
+
+
 def get_tools(tool_configs: list[Dict[str, Any]]) -> Dict[str, BaseTool]:
     """Create tool instances from configuration list."""
     tools = {}
