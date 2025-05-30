@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "triggered"
+version = "0.1.0"
+description = "Runtime engine that executes actions based on various trigger types, including AI-powered triggers."
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.7"
+fastapi = "^0.111.0"
+uvicorn = {extras = ["standard"], version = "^0.29.0"}
+croniter = "^2.0"
+celery = "^5.3"
+typer = "^0.12.3"
+watchdog = "^4.0"
+opentelemetry-api = "^1.24.0"
+opentelemetry-sdk = "^1.24.0"
+opentelemetry-instrumentation-logging = "^0.46b0"
+opentelemetry-exporter-otlp = "^1.24.0"
+opentelemetry-instrumentation-fastapi = "^0.46b0"
+rich = "^13.7"
+# Lightweight local LLM runtime (optional but default):
+llama-cpp-python = {version = "^0.2.11", optional = true}
+httpx = "^0.27.0"
+
+[tool.poetry.extras]
+local-model = ["llama-cpp-python"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api" 
