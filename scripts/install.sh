@@ -16,14 +16,6 @@ if ! command -v poetry >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 2. Download local LLM model ------------------------------------------------
-# 2. Local LLM download is handled automatically by llama_cpp via
-#    Llama.from_pretrained (see triggered/models). Keeping this section empty
-#    to avoid unnecessary manual downloads; override via environment if you
-#    still want to pre-download:
-
-echo "[=] Model will be auto-downloaded on first use via llama_cpp"
-
 # 3. Install Python dependencies -------------------------------------------
 echo "[+] Installing Python dependencies via Poetry…"
 poetry install --extras "local-model"
@@ -73,4 +65,29 @@ Press Ctrl+C in this window to stop both services.
 EOF
 
 # Wait indefinitely so the script remains in foreground
-wait 
+wait
+
+echo "[=] Model will be auto-downloaded on first use via llama_cpp"
+
+# 2b. Ensure Ollama ---------------------------------------------------------
+if ! command -v ollama >/dev/null 2>&1; then
+  echo "[+] Installing Ollama…"
+  if command -v brew >/dev/null 2>&1; then
+    brew install ollama
+  elif command -v apt-get >/dev/null 2>&1; then
+    curl -fsSL https://ollama.com/install.sh | sh
+  else
+    echo "[!] Cannot install Ollama automatically. Please install it manually."
+  fi
+fi
+
+# Start Ollama daemon if not running
+if ! pgrep -f "ollama serve" >/dev/null 2>&1; then
+  echo "[+] Starting Ollama daemon…"
+  nohup ollama serve > /dev/null 2>&1 &
+  sleep 3
+fi
+
+OLLAMA_MODEL=${OLLAMA_MODEL:-"phi4-mini"}
+echo "[+] Pulling Ollama model $OLLAMA_MODEL…"
+ollama pull "$OLLAMA_MODEL" || true 

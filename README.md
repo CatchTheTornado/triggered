@@ -90,4 +90,15 @@ Save as `triggers/ai-ps.json` (or POST to `/triggers`).  The runtime will pick i
 }
 ```
 
-You'll see the command output in the Celery worker logs each time the AI decides to fire. 
+You'll see the command output in the Celery worker logs each time the AI decides to fire.
+
+### Run a Trigger once from the CLI
+
+To execute any trigger-action JSON once without starting the server/worker pair:
+
+```bash
+# inside project root
+poetry run triggered run-trigger triggers/ai-ps.json
+```
+
+The CLI loads the file, performs the AI check, and runs the associated action immediately, printing any logs to the console. 

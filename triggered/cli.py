@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import asyncio
 
 import typer
 import uvicorn
@@ -8,10 +9,19 @@ from rich import print
 from .core import TriggerAction
 
 
+# ---------------------------------------------------------------------------
+# Typer app setup
+# ---------------------------------------------------------------------------
+
 app = typer.Typer(help="Triggered CLI")
 
 TRIGGER_DIR = Path("triggers")
 TRIGGER_DIR.mkdir(exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Paths & helpers
+# ---------------------------------------------------------------------------
 
 
 @app.command()
@@ -53,6 +63,51 @@ def server(
 ):
     """Run FastAPI server."""
     uvicorn.run("triggered.server:app", host=host, port=port, reload=reload)
+
+
+# ---------------------------------------------------------------------------
+# run-trigger command
+# ---------------------------------------------------------------------------
+
+
+@app.command("run-trigger")
+def run_trigger_once(path: Path = typer.Argument(..., exists=True)):
+    """Execute a trigger-action JSON definition one time.
+
+    Example:
+        poetry run triggered run-trigger triggers/ai-ps.json
+    """
+
+    asyncio.run(_execute_ta_once(path))
+
+
+# ---------------------------------------------------------------------------
+# internal helper
+# ---------------------------------------------------------------------------
+
+
+async def _execute_ta_once(ta_path: Path):
+    """Load a TriggerAction JSON file and execute once synchronously."""
+
+    from .registry import get_trigger, get_action
+    from .core import TriggerAction, TriggerContext
+
+    data = json.loads(ta_path.read_text())
+    ta = TriggerAction.model_validate(data)  # type: ignore[attr-defined]
+
+    trigger_cls = get_trigger(ta.trigger_type)
+    action_cls = get_action(ta.action_type)
+
+    trigger = trigger_cls(ta.trigger_config)
+    action = action_cls(ta.action_config)
+
+    ctx = None
+    if hasattr(trigger, "check"):
+        ctx = await trigger.check()
+    if ctx is None:
+        ctx = TriggerContext(trigger_name=ta.trigger_type)
+
+    await action.execute(ctx)
 
 
 if __name__ == "__main__":  # pragma: no cover
