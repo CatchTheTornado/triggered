@@ -39,6 +39,8 @@ The installer will:
 
 The first time an AI trigger/action runs, the required GGUF model is automatically pulled from Hugging Face via `llama-cpp-python`.
 
+Press `Ctrl-C` in the install-script terminal at any time and it will shut down both the API server and Celery worker for you (the script now traps the signal and kills the background PIDs automatically).
+
 ## Quick start
 
 ```bash

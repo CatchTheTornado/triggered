@@ -69,7 +69,8 @@ class RuntimeManager:
         for file in TRIGGER_DIR.glob("*.json"):
             try:
                 data = json.loads(file.read_text())
-                ta = TriggerAction.model_validate(  # type: ignore[attr-defined]
+                # type: ignore[attr-defined]
+                ta = TriggerAction.model_validate(
                     data,
                 )
                 self.trigger_actions.append(ta)
@@ -147,7 +148,8 @@ async def on_startup():
 async def create_trigger(req: Request):
     body = await req.json()
     try:
-        ta = TriggerAction.model_validate(  # type: ignore[attr-defined]
+        # type: ignore[attr-defined]
+        ta = TriggerAction.model_validate(
             body,
         )
     except Exception as exc:  # noqa: WPS420

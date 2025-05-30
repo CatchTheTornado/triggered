@@ -58,6 +58,9 @@ echo "[+] Launching Celery worker…"
 poetry run celery -A triggered.queue worker --loglevel=info &
 WORKER_PID=$!
 
+# Trap Ctrl+C / SIGTERM and kill children
+trap 'echo "[+] Shutting down Triggered…"; kill $SERVER_PID $WORKER_PID; exit 0' INT TERM
+
 cat <<EOF
 
 [✓] Triggered is up & running!
@@ -65,6 +68,9 @@ cat <<EOF
     Server PID:  $SERVER_PID
     Worker PID:  $WORKER_PID
 
-To stop services:
-    kill $SERVER_PID $WORKER_PID
-EOF 
+Press Ctrl+C in this window to stop both services.
+
+EOF
+
+# Wait indefinitely so the script remains in foreground
+wait 
