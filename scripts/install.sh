@@ -88,6 +88,6 @@ if ! pgrep -f "ollama serve" >/dev/null 2>&1; then
   sleep 3
 fi
 
-OLLAMA_MODEL=${OLLAMA_MODEL:-"phi4-mini"}
+OLLAMA_MODEL=${OLLAMA_MODEL:-"llama3.1"}
 echo "[+] Pulling Ollama model $OLLAMA_MODEL…"
 ollama pull "$OLLAMA_MODEL" || true 

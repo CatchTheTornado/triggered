@@ -127,7 +127,7 @@ class AITrigger(Trigger):
         tools = None
         if isinstance(self.model, OllamaModel):
             tools = get_ollama_tools(self.tool_configs)
-
+        
         response = await self.model.ainvoke(prompt, tools=tools)
 
         # Extract JSON from response

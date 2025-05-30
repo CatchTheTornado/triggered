@@ -94,32 +94,94 @@ class OllamaModel(BaseModelAdapter):
     """Adapter that talks to a local Ollama server via HTTP."""
 
     def __init__(self, model: str | None = None):
-        self.model = model or os.getenv("OLLAMA_MODEL", "phi4-mini")
+        self.model = model or os.getenv("OLLAMA_MODEL", "llama3.1")
         self.base_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
     async def ainvoke(self, prompt: str, tools: list | None = None) -> str:
         try:
             messages = [{"role": "user", "content": prompt}]
-            resp = await ollama.chat(
-                model=self.model,
-                messages=messages,
-                tools=tools
+            
+            # If tools are provided, add them to the system message
+            if tools:
+                system_message = {
+                    "role": "system",
+                    "content": "You have access to the following tools:",
+                    "tools": tools
+                }
+                messages.insert(0, system_message)
+            
+            # Run the synchronous chat method in a thread pool
+            loop = asyncio.get_running_loop()
+            resp = await loop.run_in_executor(
+                None,
+                lambda: ollama.chat(
+                    model=self.model,
+                    messages=messages
+                )
             )
-            return resp.get("message", {}).get("content", "")
+            
+            if not resp:
+                logger.error("Empty response from Ollama API")
+                return "Error: Empty response from model"
+                
+            message = resp.get("message", {})
+            if not message:
+                logger.error("No message in Ollama response: %s", resp)
+                return "Error: Invalid response format from model"
+                
+            content = message.get("content", "")
+            if not content:
+                logger.error("No content in Ollama message: %s", message)
+                return "Error: Empty response from model"
+                
+            return content
+            
         except Exception as e:
             if "model not found" in str(e).lower():
                 logger.info(
                     "Model %s missing, attempting ollama pull…",
                     self.model,
                 )
-                await ollama.pull(self.model)
-                resp = await ollama.chat(
-                    model=self.model,
-                    messages=messages,
-                    tools=tools
-                )
-                return resp.get("message", {}).get("content", "")
-            raise
+                try:
+                    # Run pull in thread pool
+                    await loop.run_in_executor(
+                        None, 
+                        lambda: ollama.pull(self.model)
+                    )
+                    # Run chat again in thread pool
+                    resp = await loop.run_in_executor(
+                        None,
+                        lambda: ollama.chat(
+                            model=self.model,
+                            messages=messages
+                        )
+                    )
+                    
+                    if not resp:
+                        logger.error("Empty response after model pull")
+                        return "Error: Empty response from model"
+                        
+                    message = resp.get("message", {})
+                    if not message:
+                        logger.error("No message in response after pull: %s", resp)
+                        return "Error: Invalid response format from model"
+                        
+                    content = message.get("content", "")
+                    if not content:
+                        logger.error("No content in message after pull: %s", message)
+                        return "Error: Empty response from model"
+                        
+                    return content
+                    
+                except Exception as pull_error:
+                    logger.error(
+                        "Failed to pull or use model: %s", 
+                        str(pull_error)
+                    )
+                    return f"Error: Failed to load model - {str(pull_error)}"
+                    
+            logger.error("Ollama API error: %s", str(e))
+            return f"Error: {str(e)}"
 
 
 # fallback detection
