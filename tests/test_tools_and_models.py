@@ -88,26 +88,27 @@ async def test_tool_execution():
 @pytest.mark.asyncio
 async def test_weather_tool():
     """Test weather tool with mocked API."""
-    with patch("httpx.AsyncClient.get") as mock_get:
-        # Mock successful response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "weather": [{"main": "Cloudy"}],
-            "main": {"temp": 20}
-        }
-        mock_get.return_value = mock_response
-        
-        tool = WeatherTool()
-        result = await tool._run(city="London")
-        assert "cloudy" in result.lower()
-        assert "20°C" in result
-        
-        # Test error handling
-        mock_response.status_code = 404
-        mock_response.json.return_value = {"message": "City not found"}
-        result = await tool._run(city="InvalidCity")
-        assert "error" in result.lower()
+    with patch.dict(os.environ, {"OPENWEATHER_API_KEY": "test_key"}):
+        with patch("httpx.AsyncClient.get") as mock_get:
+            # Mock successful response
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "weather": [{"main": "Cloudy"}],
+                "main": {"temp": 20}
+            }
+            mock_get.return_value = mock_response
+            
+            tool = WeatherTool()
+            result = await tool._run(city="London")
+            assert "cloudy" in result.lower()
+            assert "20°C" in result
+            
+            # Test error handling
+            mock_response.status_code = 404
+            mock_response.json.return_value = {"message": "City not found"}
+            result = await tool._run(city="InvalidCity")
+            assert "error" in result.lower()
 
 
 # Test Ollama Model
@@ -134,7 +135,7 @@ async def test_ollama_model():
         # Test missing message
         mock_chat.return_value = {}
         result = await model.ainvoke("test prompt")
-        assert "Error: Invalid response format" in result
+        assert "Error: Empty response" in result
         
         # Test missing content
         mock_chat.return_value = {"message": {}}

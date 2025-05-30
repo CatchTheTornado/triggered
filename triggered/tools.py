@@ -57,7 +57,7 @@ class CurrentDateTool(BaseTool):
     args_schema: Type[BaseModel] = CurrentDateInput
 
     async def _run(self) -> str:
-        return _dt.datetime.utcnow().strftime("%Y-%m-%d")
+        return _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%d")
 
 
 class WeatherTool(BaseTool):
