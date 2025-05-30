@@ -1,17 +1,16 @@
 # Triggered
 
-Triggered is a runtime engine similar to cron, but designed for the AI era. It executes user-defined Actions when their associated Triggers fire. Triggers may be time-based, filesystem events, incoming webhooks, or arbitrarily complex AI checks powered by local or cloud language models.
+A runtime engine that executes user-defined actions based on various triggers, including time-based, filesystem events, and AI checks.
 
 ## Features
 
-* Cron-style time triggers, folder monitoring, and webhook listeners
-* AI triggers that evaluate arbitrary prompts against multiple models (default: a local `phi-4-mini` compatible model via `llama-cpp-python`)
-* Extensible registry for new Trigger and Action types
-* JSON-based, schema-validated TriggerAction definitions stored as standalone files
-* Asynchronous, multi-process execution queue powered by Celery
-* FastAPI server exposing management and observability APIs
-* Typer CLI for creating new triggers from the terminal
-* Structured logging and tracing via OpenTelemetry
+- Cron-style triggers for time-based execution
+- Filesystem event triggers for file/directory monitoring
+- AI-driven triggers using local or remote LLMs
+- Extensible architecture for new trigger and action types
+- FastAPI server for management APIs
+- Built-in tools for AI triggers (weather, current date, etc.)
+- Support for custom tools via Python modules
 
 ## Installation
 
@@ -66,8 +65,160 @@ triggered/
 └── server.py       # FastAPI application
 ```
 
-## License
-MIT 
+## AI-Driven Triggers
+
+AI triggers use language models to make decisions based on natural language prompts. They can be configured with various tools to enhance their capabilities.
+
+### Basic Example
+
+```json
+{
+  "type": "ai",
+  "name": "process-check",
+  "prompt": "Is there a process named 'nginx' running?",
+  "model": "local",
+  "interval": 60
+}
+```
+
+### Using Built-in Tools
+
+AI triggers can use built-in tools to access external information. Here's an example using the weather tool:
+
+```json
+{
+  "type": "ai",
+  "name": "weather-check",
+  "prompt": "Is it cloudy in London?",
+  "model": "local",
+  "interval": 300,
+  "tools": [
+    {
+      "type": "weather",
+      "name": "weather"
+    }
+  ]
+}
+```
+
+Available built-in tools:
+- `weather`: Get current weather conditions for a city
+- `currentdate`: Get the current date in YYYY-MM-DD format
+
+### Custom Tools
+
+You can extend the system with custom tools in two ways:
+
+1. **JSON Configuration**
+   Add tool configurations to your trigger's JSON:
+
+   ```json
+   {
+     "type": "ai",
+     "name": "custom-tool-example",
+     "prompt": "Use my custom tool",
+     "model": "local",
+     "tools": [
+       {
+         "type": "my_custom_tool",
+         "name": "my_tool",
+         "config": {
+           "param1": "value1"
+         }
+       }
+     ]
+   }
+   ```
+
+2. **Python Module**
+   Create a Python module with your custom tools:
+
+   ```python
+   # custom_tools.py
+   from triggered.tools import BaseTool, ToolInput
+   from pydantic import Field
+
+   class MyToolInput(ToolInput):
+       param1: str = Field(..., description="First parameter")
+
+   class MyCustomTool(BaseTool):
+       name: str = "my_custom_tool"
+       description: str = "My custom tool description"
+       args_schema: Type[BaseModel] = MyToolInput
+
+       async def _run(self, param1: str) -> str:
+           # Your tool implementation
+           return f"Processed {param1}"
+   ```
+
+   Then reference it in your trigger configuration:
+
+   ```json
+   {
+     "type": "ai",
+     "name": "custom-tool-example",
+     "prompt": "Use my custom tool",
+     "model": "local",
+     "custom_tools_path": "path/to/custom_tools.py",
+     "tools": [
+       {
+         "type": "my_custom_tool",
+         "name": "my_tool"
+       }
+     ]
+   }
+   ```
+
+### Tool Development Guidelines
+
+When creating custom tools:
+
+1. Inherit from `BaseTool` and define required attributes:
+   - `name`: Unique identifier for the tool
+   - `description`: Clear description of what the tool does
+   - `args_schema`: Pydantic model for input validation
+
+2. Implement the `_run` method:
+   - Must be async
+   - Should handle errors gracefully
+   - Return string results
+
+3. Use Pydantic for input validation:
+   - Define input schemas using `ToolInput` as base
+   - Add field descriptions for better AI understanding
+
+4. Consider adding environment variables for sensitive data:
+   - API keys
+   - Credentials
+   - Configuration values
+
+Example of a well-structured custom tool:
+
+```python
+from triggered.tools import BaseTool, ToolInput
+from pydantic import Field
+import os
+
+class APIToolInput(ToolInput):
+    query: str = Field(..., description="The query to process")
+    max_results: int = Field(5, description="Maximum number of results")
+
+class APITool(BaseTool):
+    name: str = "api_tool"
+    description: str = "Makes API calls to external service"
+    args_schema: Type[BaseModel] = APIToolInput
+
+    async def _run(self, query: str, max_results: int) -> str:
+        api_key = os.getenv("API_KEY")
+        if not api_key:
+            return "Error: API_KEY not set"
+            
+        try:
+            # Your API implementation
+            return f"Processed {query} with {max_results} results"
+        except Exception as e:
+            return f"Error: {str(e)}"
+```
 
 ## Example: AI-driven process listing
 
@@ -101,4 +252,8 @@ To execute any trigger-action JSON once without starting the server/worker pair:
 poetry run triggered run-trigger triggers/ai-ps.json
 ```
 
-The CLI loads the file, performs the AI check, and runs the associated action immediately, printing any logs to the console. 
+The CLI loads the file, performs the AI check, and runs the associated action immediately, printing any logs to the console.
+
+## License
+
+MIT 

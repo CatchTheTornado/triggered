@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import logging
+import re
 
 from ..core import Trigger, TriggerContext
 from ..registry import register_trigger
@@ -81,6 +82,39 @@ class AITrigger(Trigger):
                 await queue_put(ctx)
             await asyncio.sleep(self.interval)
 
+    def _extract_json(self, text: str) -> str | None:
+        """Extract JSON from text, handling various formats and positions.
+        
+        Parameters
+        ----------
+        text : str
+            The text to extract JSON from
+            
+        Returns
+        -------
+        str | None
+            The extracted JSON string or None if no valid JSON found
+        """
+        # First try to find JSON in code blocks
+        code_block_pattern = r"```(?:json)?\s*(\{[\s\S]*?\})\s*```"
+        code_matches = re.findall(code_block_pattern, text)
+        if code_matches:
+            return code_matches[0].strip()
+
+        # Then try to find any JSON object in the text
+        json_pattern = r"(\{[\s\S]*?\})"
+        json_matches = re.findall(json_pattern, text)
+        
+        for match in json_matches:
+            try:
+                # Try to parse as JSON to validate
+                json.loads(match)
+                return match.strip()
+            except json.JSONDecodeError:
+                continue
+                
+        return None
+
     async def _evaluate(self):
         # Render prompt with Jinja2
         env = Environment()
@@ -96,31 +130,25 @@ class AITrigger(Trigger):
 
         response = await self.model.ainvoke(prompt, tools=tools)
 
-        def _strip_fences(text: str):
-            txt = text.strip()
-            if txt.startswith("```") and txt.endswith("```"):
-                # remove leading and trailing backticks
-                txt = txt.strip("`")
-                # drop optional language tag on first line
-                if txt.startswith("json"):
-                    txt = txt[len("json"):]
-                # strip again newlines and remaining backticks
-                txt = txt.strip()
-                if txt.endswith("```"):
-                    txt = txt[:-3]
-            return txt.strip()
-
-        clean_response = _strip_fences(response)
-
-        try:
-            obj = json.loads(clean_response)
-            obj["raw"] = response
-            return obj  # includes raw
-        except Exception:  # noqa: WPS420
-            logger.warning("AI response not JSON: %s", response)
+        # Extract JSON from response
+        json_str = self._extract_json(response)
+        if not json_str:
+            logger.warning("No valid JSON found in response: %s", response)
             return {
                 "trigger": False,
-                "reason": "invalid JSON",
+                "reason": "no valid JSON found",
+                "raw": response,
+            }
+
+        try:
+            obj = json.loads(json_str)
+            obj["raw"] = response
+            return obj  # includes raw
+        except json.JSONDecodeError as e:
+            logger.warning("Failed to parse JSON: %s", e)
+            return {
+                "trigger": False,
+                "reason": f"invalid JSON: {str(e)}",
                 "raw": response,
             }
 
