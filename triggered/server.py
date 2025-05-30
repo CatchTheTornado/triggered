@@ -100,7 +100,7 @@ class RuntimeManager:
 
     def add_trigger_action(self, ta: TriggerAction):
         file_path = TRIGGER_DIR / f"{ta.id}.json"
-        file_path.write_text(ta.model_dump_json(indent=2))
+        file_path.write_text(json.dumps(ta.model_dump(mode="json"), indent=2))
         self.trigger_actions.append(ta)
         # Start watcher for this trigger
         trigger_cls = get_trigger(ta.trigger_type)
