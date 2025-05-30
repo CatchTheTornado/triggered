@@ -6,16 +6,18 @@ from pathlib import Path
 from typing import Dict, List
 
 from fastapi import FastAPI, HTTPException, Request
-from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
+from opentelemetry import trace  # type: ignore
+from opentelemetry.instrumentation.fastapi import (  # type: ignore
+    FastAPIInstrumentor,
+)
+from opentelemetry.sdk.resources import Resource  # type: ignore
+from opentelemetry.sdk.trace import TracerProvider  # type: ignore
+from opentelemetry.sdk.trace.export import (  # type: ignore
     BatchSpanProcessor,
     ConsoleSpanExporter,
 )
 
-from .core import TriggerAction, TriggerContext
+from .core import TriggerAction
 from .queue import execute_action
 from .registry import get_trigger
 
@@ -43,9 +45,7 @@ class RuntimeManager:
     def __init__(self):
         self.trigger_actions: List[TriggerAction] = []
         self._watcher_tasks: List[asyncio.Task] = []
-        self._queue: "asyncio.Queue[tuple[TriggerAction, TriggerContext]]" = (
-            asyncio.Queue()
-        )
+        self._queue: asyncio.Queue = asyncio.Queue()
 
     async def start(self):
         self._load_from_disk()
@@ -56,7 +56,9 @@ class RuntimeManager:
         for file in TRIGGER_DIR.glob("*.json"):
             try:
                 data = json.loads(file.read_text())
-                ta = TriggerAction.model_validate(data)
+                ta = TriggerAction.model_validate(  # type: ignore[attr-defined]
+                    data,
+                )
                 self.trigger_actions.append(ta)
             except Exception as exc:  # noqa: WPS420
                 logger.error("Failed to load trigger file %s: %s", file, exc)
@@ -66,7 +68,9 @@ class RuntimeManager:
             trigger_cls = get_trigger(ta.trigger_type)
             trigger = trigger_cls(ta.trigger_config)
             task = asyncio.create_task(
-                trigger.watch(lambda ctx, ta=ta: self._queue.put((ta, ctx))),
+                trigger.watch(
+                    lambda ctx, ta=ta: self._queue.put((ta, ctx)),
+                ),
             )
             self._watcher_tasks.append(task)
 
@@ -100,13 +104,20 @@ class RuntimeManager:
 
     def add_trigger_action(self, ta: TriggerAction):
         file_path = TRIGGER_DIR / f"{ta.id}.json"
-        file_path.write_text(json.dumps(ta.model_dump(mode="json"), indent=2))
+        file_path.write_text(
+            json.dumps(
+                ta.model_dump(mode="json"),
+                indent=2,
+            ),
+        )
         self.trigger_actions.append(ta)
         # Start watcher for this trigger
         trigger_cls = get_trigger(ta.trigger_type)
         trigger = trigger_cls(ta.trigger_config)
         task = asyncio.create_task(
-            trigger.watch(lambda ctx, ta=ta: self._queue.put((ta, ctx))),
+            trigger.watch(
+                lambda ctx, ta=ta: self._queue.put((ta, ctx)),
+            ),
         )
         self._watcher_tasks.append(task)
 
@@ -123,7 +134,9 @@ async def on_startup():
 async def create_trigger(req: Request):
     body = await req.json()
     try:
-        ta = TriggerAction.model_validate(body)
+        ta = TriggerAction.model_validate(  # type: ignore[attr-defined]
+            body,
+        )
     except Exception as exc:  # noqa: WPS420
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
