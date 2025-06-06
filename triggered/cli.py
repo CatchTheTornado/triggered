@@ -65,20 +65,49 @@ def server(
     uvicorn.run("triggered.server:app", host=host, port=port, reload=reload)
 
 
+@app.command()
+def ls():
+    """List all available triggers in the triggers directory."""
+    if not TRIGGER_DIR.exists():
+        print("[yellow]No triggers directory found.[/yellow]")
+        return
+
+    triggers = list(TRIGGER_DIR.glob("*.json"))
+    if not triggers:
+        print("[yellow]No triggers found.[/yellow]")
+        return
+
+    print("[bold]Available triggers:[/bold]")
+    for trigger in sorted(triggers):
+        print(f"  • {trigger.name}")
+
+
 # ---------------------------------------------------------------------------
 # run-trigger command
 # ---------------------------------------------------------------------------
 
 
 @app.command("run")
-def run_trigger_once(path: Path = typer.Argument(..., exists=True)):
+def run_trigger_once(path: str = typer.Argument(...)):
     """Execute a trigger-action JSON definition one time.
 
+    The path can be either absolute or relative to the triggers directory.
     Example:
-        poetry run triggered run-trigger triggers/ai-ps.json
+        triggered run triggers/ai-ps.json
+        triggered run ai-ps.json
     """
+    # Convert string path to Path object
+    path_obj = Path(path)
+    
+    # If path is relative and doesn't start with 'triggers/', look in triggers directory
+    if not path_obj.is_absolute() and not str(path_obj).startswith('triggers/'):
+        path_obj = TRIGGER_DIR / path_obj
 
-    asyncio.run(_execute_ta_once(path))
+    if not path_obj.exists():
+        print(f"[red]Error: Trigger file not found: {path_obj}[/red]")
+        return
+
+    asyncio.run(_execute_ta_once(path_obj))
 
 
 # ---------------------------------------------------------------------------

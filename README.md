@@ -74,9 +74,13 @@ ollama pull llama3.1
 }
 ```
 
-3. Run the trigger:
+3. List available triggers:
 ```bash
-# Make sure you're in the Poetry environment
+triggered ls
+```
+
+4. Run the trigger:
+```bash
 triggered run triggers/my_trigger.json
 ```
 
