@@ -6,7 +6,7 @@
     "interval": 30,
     "tools": ["process_checker"]
   },
-  "action_type": "shell-command",
+  "action_type": "shell",
   "action_config": {
     "name": "vscode-notification",
     "command": "echo 'Nice! Visual Studio Code just started'"

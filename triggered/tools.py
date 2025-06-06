@@ -1,4 +1,4 @@
-from typing import Dict, Type, Any, Optional
+from typing import Dict, Type, Any, Optional, Union
 import datetime as _dt
 from pydantic import BaseModel, Field
 import httpx
@@ -51,14 +51,25 @@ TOOL_REGISTRY: Dict[str, Type[Tool]] = {
 }
 
 
-def get_tools(tool_configs: list[Dict[str, Any]]) -> Dict[str, Tool]:
-    """Get tool instances from configurations."""
+def get_tools(tool_configs: list[Union[str, Dict[str, Any]]]) -> Dict[str, Tool]:
+    """Get tool instances from configurations.
+    
+    Args:
+        tool_configs: List of tool configurations. Each config can be either:
+            - A string (tool type name)
+            - A dictionary with at least a "type" key
+    """
     tools = {}
     for config in tool_configs:
-        tool_type = config.get("type")
+        if isinstance(config, str):
+            tool_type = config
+        else:
+            tool_type = config.get("type")
+            
         if tool_type not in TOOL_REGISTRY:
             logger.warning("Unknown tool type: %s", tool_type)
             continue
+            
         tool_cls = TOOL_REGISTRY[tool_type]
         tools[tool_type] = tool_cls()
     return tools
