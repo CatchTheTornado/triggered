@@ -30,8 +30,8 @@ from .registry import get_trigger
 
 logger = logging.getLogger(__name__)
 
-ENTRIES_DIR = Path(os.getenv("TRIGGERED_ENTRIES_PATH", "entries"))
-ENTRIES_DIR.mkdir(parents=True, exist_ok=True)
+TRIGGER_ACTIONS_DIR = Path(os.getenv("TRIGGERED_TRIGGER_ACTIONS_PATH", "trigger_actions"))
+TRIGGER_ACTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Triggered Runtime Engine")
 
@@ -66,7 +66,7 @@ class RuntimeManager:
         asyncio.create_task(self._dispatcher())
 
     def _load_from_disk(self):
-        for file in ENTRIES_DIR.glob("*.json"):
+        for file in TRIGGER_ACTIONS_DIR.glob("*.json"):
             try:
                 data = json.loads(file.read_text())
                 # type: ignore[attr-defined]
@@ -117,7 +117,7 @@ class RuntimeManager:
             )
 
     def add_trigger_action(self, ta: TriggerAction):
-        file_path = ENTRIES_DIR / f"{ta.id}.json"
+        file_path = TRIGGER_ACTIONS_DIR / f"{ta.id}.json"
         file_path.write_text(
             json.dumps(
                 ta.model_dump(mode="json"),
@@ -144,7 +144,7 @@ async def on_startup():
     await runtime.start()
 
 
-@app.post("/entries")
+@app.post("/trigger_actions")
 async def create_trigger(req: Request):
     body = await req.json()
     try:
@@ -159,7 +159,7 @@ async def create_trigger(req: Request):
     return {"id": ta.id, "auth_key": ta.auth_key}
 
 
-@app.get("/entries/{trigger_id}")
+@app.get("/trigger_actions/{trigger_id}")
 async def get_trigger_info(trigger_id: str, auth: str):
     for ta in runtime.trigger_actions:
         if ta.id == trigger_id:

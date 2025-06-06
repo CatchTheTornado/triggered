@@ -18,7 +18,7 @@ A Python library for creating and managing AI-powered triggers and actions.
 
 - `TRIGGERED_LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 - `TRIGGERED_LOGS_PATH`: Set the path for log files (default: "logs")
-- `TRIGGERED_ENTRIES_PATH`: Set the path for trigger definitions (default: "entries")
+- `TRIGGERED_TRIGGER_ACTIONS_PATH`: Set the path for trigger definitions (default: "trigger_actions")
 - `TRIGGERED_COMPONENTS_PATH`: Set the path for custom components (default: "triggered/components")
 - `TRIGGERED_TRIGGERS_MODULE`: Set the Python module path for trigger implementations (default: "triggered/triggers")
 - `TRIGGERED_ACTIONS_MODULE`: Set the Python module path for action implementations (default: "triggered/actions")
