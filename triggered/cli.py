@@ -51,21 +51,41 @@ def get_available_trigger_types() -> list[str]:
 def get_available_action_types() -> list[str]:
     """Get list of available action types."""
     # This should be implemented to return actual action types from registry
-    return ["shell", "http", "notification"]
+    return ["shell", "webhook_call", "ai_agent", "python_script", "typescript_script"]
 
 def get_trigger_schema(trigger_type: str) -> Dict[str, Any]:
     """Get schema for trigger type."""
     trigger_cls = get_trigger(trigger_type)
-    return trigger_cls.model_json_schema()
+    # Get the config parameters from the __init__ method
+    init_params = trigger_cls.__init__.__annotations__
+    if 'config' in init_params:
+        # Return a basic schema based on the config parameter type
+        return {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Trigger name"},
+                # Add other common properties based on trigger type
+            }
+        }
+    return {}
 
 def get_action_schema(action_type: str) -> Dict[str, Any]:
     """Get schema for action type."""
     action_cls = get_action(action_type)
-    return action_cls.model_json_schema()
+    # Get the config parameters from the __init__ method
+    init_params = action_cls.__init__.__annotations__
+    if 'config' in init_params:
+        # Return a basic schema based on the config parameter type
+        return {
+            "type": "object",
+            "properties": {
+                # Add common properties based on action type
+            }
+        }
+    return {}
 
 def interactive_trigger_config(trigger_type: str) -> Dict[str, Any]:
     """Interactive prompt for trigger configuration."""
-    schema = get_trigger_schema(trigger_type)
     config = {}
     
     console.print(Panel(f"Configuring {trigger_type} trigger", style="bold blue"))
@@ -84,28 +104,30 @@ def interactive_trigger_config(trigger_type: str) -> Dict[str, Any]:
                 if not Confirm.ask("Add another tool?"):
                     break
     elif trigger_type == "cron":
-        config["schedule"] = Prompt.ask("Cron schedule (e.g. '*/5 * * * *')")
+        config["name"] = Prompt.ask("Trigger name")
+        config["expression"] = Prompt.ask("Cron schedule (e.g. '*/5 * * * *')")
     elif trigger_type == "webhook":
-        config["path"] = Prompt.ask("Webhook path", default="/webhook")
-        config["method"] = Prompt.ask("HTTP method", default="POST")
+        config["name"] = Prompt.ask("Trigger name")
+        config["route"] = Prompt.ask("Webhook path", default="/webhook")
     elif trigger_type == "folder":
+        config["name"] = Prompt.ask("Trigger name")
         config["path"] = Prompt.ask("Folder to monitor")
+        config["interval"] = int(Prompt.ask("Check interval (seconds)", default="5"))
         config["patterns"] = Prompt.ask("File patterns (comma-separated)", default="*")
     
     return config
 
 def interactive_action_config(action_type: str) -> Dict[str, Any]:
     """Interactive prompt for action configuration."""
-    schema = get_action_schema(action_type)
     config = {}
     
     console.print(Panel(f"Configuring {action_type} action", style="bold green"))
     
     if action_type == "shell":
         config["command"] = Prompt.ask("Shell command to execute")
-    elif action_type == "http":
+    elif action_type == "webhook_call":
         config["url"] = Prompt.ask("HTTP URL")
-        config["method"] = Prompt.ask("HTTP method", default="POST")
+        config["payload"] = Prompt.ask("Payload template (optional)", default="{}")
         config["headers"] = {}
         if Confirm.ask("Add headers?"):
             while True:
@@ -114,9 +136,20 @@ def interactive_action_config(action_type: str) -> Dict[str, Any]:
                 config["headers"][key] = value
                 if not Confirm.ask("Add another header?"):
                     break
-    elif action_type == "notification":
-        config["message"] = Prompt.ask("Notification message")
-        config["title"] = Prompt.ask("Notification title")
+    elif action_type == "ai_agent":
+        config["model"] = Prompt.ask("Model name", default="ollama/llama3.1")
+        config["prompt"] = Prompt.ask("AI prompt")
+        config["tools"] = []
+        if Confirm.ask("Add tools?"):
+            while True:
+                tool_type = Prompt.ask("Tool type", choices=["random_number"])
+                config["tools"].append({"type": tool_type})
+                if not Confirm.ask("Add another tool?"):
+                    break
+    elif action_type == "python_script":
+        config["path"] = Prompt.ask("Path to Python script")
+    elif action_type == "typescript_script":
+        config["path"] = Prompt.ask("Path to TypeScript script")
     
     return config
 
