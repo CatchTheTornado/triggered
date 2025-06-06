@@ -1,0 +1,14 @@
+{
+  "trigger_type": "ai",
+  "trigger_config": {
+    "name": "vscode-monitor",
+    "prompt": "Check if Visual Studio Code is running. If it is running, trigger the action. If not, don't trigger.",
+    "interval": 30,
+    "tools": ["process_checker"]
+  },
+  "action_type": "shell-command",
+  "action_config": {
+    "name": "vscode-notification",
+    "command": "echo 'Nice! Visual Studio Code just started'"
+  }
+} 
