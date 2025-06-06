@@ -119,8 +119,8 @@ def get_model(
     model: str | None = None,
     api_base: str | None = None,
     **kwargs
-) -> LiteLLMModel:
-    """Get a configured LiteLLM model.
+) -> BaseModelAdapter:
+    """Get a configured model.
     
     Parameters
     ----------
@@ -129,11 +129,26 @@ def get_model(
     api_base : str | None
         API base URL. Defaults to LITELLM_API_BASE env var or "http://localhost:11434"
     **kwargs
-        Additional arguments to pass to LiteLLM
+        Additional arguments to pass to the model
         
     Returns
     -------
-    LiteLLMModel
-        Configured LiteLLM model instance
+    BaseModelAdapter
+        Configured model instance
     """
-    return LiteLLMModel(model=model, api_base=api_base, **kwargs) 
+    # Create a cache key from the model name and API base
+    cache_key = f"{model}:{api_base}"
+    
+    # Check if we have a cached instance
+    if cache_key in _MODEL_CACHE:
+        return _MODEL_CACHE[cache_key]
+    
+    # Create a new instance
+    if os.getenv("DISABLE_OLLAMA") == "1":
+        instance = DummyModel()
+    else:
+        instance = LiteLLMModel(model=model, api_base=api_base, **kwargs)
+    
+    # Cache the instance
+    _MODEL_CACHE[cache_key] = instance
+    return instance 
