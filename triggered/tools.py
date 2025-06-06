@@ -59,38 +59,6 @@ class CurrentDateTool(BaseTool):
     async def _run(self) -> str:
         return _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%d")
 
-
-class WeatherTool(BaseTool):
-    name: str = "weather"
-    description: str = (
-        "Returns the current weather conditions for a given city"
-    )
-    args_schema: Type[BaseModel] = WeatherInput
-
-    async def _run(self, city: str) -> str:
-        # Using OpenWeatherMap API as an example
-        # You'll need to set OPENWEATHER_API_KEY environment variable
-        api_key = os.getenv("OPENWEATHER_API_KEY")
-        if not api_key:
-            return "Error: OPENWEATHER_API_KEY not set"
-
-        base_url = "http://api.openweathermap.org/data/2.5/weather"
-        url = f"{base_url}?q={city}&appid={api_key}&units=metric"
-        
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(url)
-                data = response.json()
-                if response.status_code == 200:
-                    weather = data["weather"][0]["main"].lower()
-                    temp = data["main"]["temp"]
-                    return f"{weather} {temp}°C"
-                else:
-                    return f"Error: {data.get('message', 'Unknown error')}"
-            except Exception as e:
-                return f"Error fetching weather: {str(e)}"
-
-
 class RandomNumberTool(BaseTool):
     name: str = "random_number"
     description: str = "Generates a random number within a specified range"

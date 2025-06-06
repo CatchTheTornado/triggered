@@ -106,9 +106,20 @@ class AITrigger(Trigger):
     async def check(self):  # noqa: D401
         """One-shot evaluation used by CLI run-trigger."""
         obj = await self._evaluate()
-        if obj.get("trigger"):
+        if obj and obj.get("trigger"):
             return TriggerContext(
                 trigger_name=self.name,
                 data=obj,
             )
-        return None 
+        return None
+
+    async def watch(self):
+        """Continuously evaluate the trigger at the specified interval."""
+        while True:
+            try:
+                ctx = await self.check()
+                if ctx is not None:
+                    yield ctx
+            except Exception as e:
+                logger.error("Error in AI trigger evaluation: %s", e)
+            await asyncio.sleep(self.interval) 

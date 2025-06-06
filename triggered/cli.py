@@ -104,10 +104,15 @@ async def _execute_ta_once(ta_path: Path):
     ctx = None
     if hasattr(trigger, "check"):
         ctx = await trigger.check()
-    if ctx is None or not ctx.data.get("trigger", True):
-        reason = ctx.data.get("reason", "")
+    
+    if ctx is None:
+        print("Trigger not fired")
+        return
+
+    if not ctx.data.get("trigger", False):
+        reason = ctx.data.get("reason", "No reason provided")
         print("Trigger skipped –", reason)
-        print("LLM raw:", ctx.data.get("raw", "") if ctx else "")
+        print("LLM raw:", ctx.data.get("raw", ""))
         return
 
     print("Reason:", ctx.data.get("reason", ""))
