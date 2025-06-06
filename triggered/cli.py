@@ -212,12 +212,12 @@ def add_trigger(
 
 
 @app.command()
-def server(
+def start(
     host: str = "0.0.0.0",  # noqa: WPS110
     port: int = 8000,
     reload: bool = False,
 ):
-    """Run FastAPI server."""
+    """Start the FastAPI server to handle webhook triggers and manage triggers."""
     uvicorn.run("triggered.server:app", host=host, port=port, reload=reload)
 
 

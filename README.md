@@ -12,6 +12,7 @@ Triggered is a Python library for creating and managing AI-powered triggers and 
 - Cron-style scheduling
 - Folder monitoring
 - Webhook monitoring
+- FastAPI server for managing triggers and handling webhooks
 
 ## Development Setup
 
@@ -78,6 +79,18 @@ triggered run triggers/my_trigger.json
 
 # Or using just the filename (it will look in the triggers directory)
 triggered run my_trigger.json
+```
+
+5. Start the server (for webhook triggers and trigger management):
+```bash
+# Start with default settings (host: 0.0.0.0, port: 8000)
+triggered start
+
+# Or customize host and port
+triggered start --host localhost --port 3000
+
+# Enable auto-reload during development
+triggered start --reload
 ```
 
 ## Configuration
