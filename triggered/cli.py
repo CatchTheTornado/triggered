@@ -70,7 +70,7 @@ def server(
 # ---------------------------------------------------------------------------
 
 
-@app.command("run-trigger")
+@app.command("run")
 def run_trigger_once(path: Path = typer.Argument(..., exists=True)):
     """Execute a trigger-action JSON definition one time.
 

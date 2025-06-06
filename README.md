@@ -36,6 +36,13 @@ poetry install
 source $(poetry env info --path)/bin/activate
 ```
 
+5. Install the package in development mode:
+```bash
+poetry install
+```
+
+This will make the `triggered` command available in your shell.
+
 ## Quick Start
 
 1. Install Ollama and pull the llama3.1 model:
@@ -70,7 +77,7 @@ ollama pull llama3.1
 3. Run the trigger:
 ```bash
 # Make sure you're in the Poetry environment
-poetry run python -m triggered.cli run-trigger triggers/my_trigger.json
+triggered run triggers/my_trigger.json
 ```
 
 ## Configuration
@@ -152,7 +159,7 @@ poetry run pytest
 
 3. Run a trigger:
 ```bash
-poetry run python -m triggered.cli run-trigger triggers/random_trigger.json
+triggered run triggers/random_trigger.json
 ```
 
 ## License
