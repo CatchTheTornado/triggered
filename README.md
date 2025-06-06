@@ -81,7 +81,11 @@ triggered ls
 
 4. Run the trigger:
 ```bash
+# Using full path
 triggered run triggers/my_trigger.json
+
+# Or using just the filename (it will look in the triggers directory)
+triggered run my_trigger.json
 ```
 
 ## Configuration
