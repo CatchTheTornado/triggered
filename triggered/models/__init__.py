@@ -1,8 +1,9 @@
 import asyncio
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import os
 from litellm import completion, ModelResponse
+from ..tools import TOOL_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +33,37 @@ class LiteLLMModel(BaseModelAdapter):
         self.api_base = api_base or os.getenv("LITELLM_API_BASE", "http://localhost:11434")
         self.kwargs = kwargs
 
+    def _convert_tools_to_litellm_format(self, tool_configs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Convert tool configurations to LiteLLM format."""
+        tools = []
+        for config in tool_configs:
+            tool_type = config.get("type")
+            if tool_type not in TOOL_REGISTRY:
+                logger.warning("Unknown tool type: %s", tool_type)
+                continue
+            tool_cls = TOOL_REGISTRY[tool_type]
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": tool_cls.name,
+                    "description": tool_cls.description,
+                    "parameters": tool_cls.args_schema.model_json_schema(),
+                }
+            })
+        return tools
+
     async def ainvoke(self, prompt: str, tools: list | None = None) -> str:
         try:
             messages = [{"role": "user", "content": prompt}]
             
-            # If tools are provided, add them to the system message
+            # If tools are provided, convert them to LiteLLM format and add to system message
+            litellm_tools = None
             if tools:
+                litellm_tools = self._convert_tools_to_litellm_format(tools)
                 system_message = {
                     "role": "system",
                     "content": "You have access to the following tools:",
-                    "tools": tools
+                    "tools": litellm_tools
                 }
                 messages.insert(0, system_message)
             
@@ -50,7 +72,7 @@ class LiteLLMModel(BaseModelAdapter):
             response = await loop.run_in_executor(
                 None,
                 lambda: completion(
-                    tools=tools,
+                    tools=litellm_tools,
                     model=self.model,
                     messages=messages,
                     api_base=self.api_base,

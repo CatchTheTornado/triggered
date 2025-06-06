@@ -64,26 +64,6 @@ def get_tools(tool_configs: list[Dict[str, Any]]) -> Dict[str, Tool]:
     return tools
 
 
-def get_litellm_tools(tool_configs: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
-    """Convert tool configurations to LiteLLM format."""
-    tools = []
-    for config in tool_configs:
-        tool_type = config.get("type")
-        if tool_type not in TOOL_REGISTRY:
-            logger.warning("Unknown tool type: %s", tool_type)
-            continue
-        tool_cls = TOOL_REGISTRY[tool_type]
-        tools.append({
-            "type": "function",
-            "function": {
-                "name": tool_cls.name,
-                "description": tool_cls.description,
-                "parameters": tool_cls.args_schema.model_json_schema(),
-            }
-        })
-    return tools
-
-
 def load_tools_from_module(module_path: str) -> None:
     """Load custom tools from a Python module."""
     try:
