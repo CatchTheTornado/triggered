@@ -13,6 +13,8 @@ Triggered is a Python library for creating and managing AI-powered triggers and 
 - Folder monitoring
 - Webhook monitoring
 - FastAPI server for managing triggers and handling webhooks
+- Rich CLI interface with interactive configuration
+- Configurable logging with both console and file output
 
 ## Development Setup
 
@@ -131,6 +133,38 @@ export LITELLM_API_BASE="http://localhost:11434"  # Default API base
 
 - `random_number`: Generate random numbers
 - Custom tools can be added by creating a Python module
+
+### Logging Configuration
+
+The application provides flexible logging configuration:
+
+1. Console Output:
+   - Default level: INFO
+   - Rich formatting with colors
+   - Shows time, level, and message
+   - Supports tracebacks for errors
+
+2. File Output:
+   - Default level: DEBUG (captures all messages)
+   - Daily rotating log files
+   - Full details including timestamps and module names
+   - Stored in the configured logs directory
+
+3. Setting Log Level:
+   - Via environment variable:
+     ```bash
+     export TRIGGERED_LOG_LEVEL=DEBUG
+     ```
+   - Via CLI option:
+     ```bash
+     triggered start --log-level DEBUG
+     triggered run my-trigger.json --log-level DEBUG
+     ```
+
+4. Log Files:
+   - Location: `logs/YYYY-MM-DD.log`
+   - Format: `timestamp - module - level - message`
+   - Contains all log messages regardless of console level
 
 ## Examples
 

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import asyncio
 from typing import Optional, Dict, Any
+import os
 
 import typer
 import uvicorn
@@ -16,7 +17,7 @@ from pydantic import BaseModel
 from .core import TriggerAction
 from .registry import get_trigger, get_action
 from .config_schema import get_trigger_config_schema, get_action_config_schema
-from .logging_config import setup_logging, LOGS_DIR
+from .logging_config import setup_logging, LOGS_DIR, set_log_level
 
 
 # ---------------------------------------------------------------------------
@@ -28,6 +29,20 @@ console = setup_logging()
 
 TRIGGER_DIR = Path("triggers")
 TRIGGER_DIR.mkdir(exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Global options
+# ---------------------------------------------------------------------------
+
+def log_level_callback(value: str):
+    """Callback for log level option."""
+    if value:
+        try:
+            set_log_level(value)
+        except ValueError as e:
+            raise typer.BadParameter(str(e))
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +160,13 @@ def add_trigger(
     action_type: Optional[str] = typer.Option(None, help="Type of action"),
     trigger_config_path: Optional[Path] = typer.Option(None, help="Path to trigger JSON config"),
     action_config_path: Optional[Path] = typer.Option(None, help="Path to action JSON config"),
+    log_level: str = typer.Option(
+        None,
+        "--log-level",
+        "-l",
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        callback=log_level_callback,
+    ),
 ):
     """Create a new trigger-action file from configs or interactively."""
     print_app_title()
@@ -230,6 +252,13 @@ def start(
     host: str = "0.0.0.0",  # noqa: WPS110
     port: int = 8000,
     reload: bool = False,
+    log_level: str = typer.Option(
+        None,
+        "--log-level",
+        "-l",
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        callback=log_level_callback,
+    ),
 ):
     """Start the FastAPI server to handle webhook triggers and manage triggers."""
     print_app_title()
@@ -241,6 +270,7 @@ def start(
     server_info.add_row("Port", str(port))
     server_info.add_row("Auto-reload", str(reload))
     server_info.add_row("Logs directory", str(LOGS_DIR))
+    server_info.add_row("Log level", log_level or os.getenv("TRIGGERED_LOG_LEVEL", "INFO"))
     
     console.print(server_info)
     console.print("\n[bold blue]Starting server...[/bold blue]")
@@ -249,7 +279,15 @@ def start(
 
 
 @app.command()
-def ls():
+def ls(
+    log_level: str = typer.Option(
+        None,
+        "--log-level",
+        "-l",
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        callback=log_level_callback,
+    ),
+):
     """List all available triggers in the triggers directory."""
     print_app_title()
     
@@ -284,7 +322,16 @@ def ls():
 
 
 @app.command("run")
-def run_trigger_once(path: str = typer.Argument(...)):
+def run_trigger_once(
+    path: str = typer.Argument(...),
+    log_level: str = typer.Option(
+        None,
+        "--log-level",
+        "-l",
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        callback=log_level_callback,
+    ),
+):
     """Execute a trigger-action JSON definition one time.
 
     The path can be either absolute or relative to the triggers directory.

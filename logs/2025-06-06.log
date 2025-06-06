@@ -63,3 +63,12 @@ def execute_action(ta_dict, ctx_dict):
 2025-06-06 14:14:22,073 - kombu.connection - WARNING - No hostname was supplied. Reverting to default 'localhost'
 2025-06-06 14:15:09,259 - httpcore.connection - DEBUG - close.started
 2025-06-06 14:15:09,259 - httpcore.connection - DEBUG - close.complete
+2025-06-06 14:17:38,947 - LiteLLM - INFO - 
+LiteLLM completion() model= llama3.1; provider = ollama
+2025-06-06 14:17:43,678 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-06 14:17:43,681 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+2025-06-06 14:17:43,682 - LiteLLM - INFO - selected model name for cost calculation: ollama/llama3.1
+2025-06-06 14:17:43,682 - LiteLLM - INFO - selected model name for cost calculation: ollama/llama3.1
+2025-06-06 14:17:43,683 - LiteLLM - INFO - selected model name for cost calculation: ollama/llama3.1
+2025-06-06 14:17:43,684 - triggered.models - ERROR - No content in LiteLLM response: ModelResponse(id='chatcmpl-ee8cbde9-5a9d-4a92-a37a-7fa801546efe', created=1749208663, model='ollama/llama3.1', object='chat.completion', system_fingerprint=None, choices=[Choices(finish_reason='tool_calls', index=0, message=Message(content=None, role='assistant', tool_calls=[ChatCompletionMessageToolCall(function=Function(arguments='{"min_value": "1", "max_value": "10"}', name='random_number'), id='call_556d66c7-1d52-4150-8be4-ab16311125f5', type='function')], function_call=None, provider_specific_fields=None))], usage=Usage(completion_tokens=0, prompt_tokens=266, total_tokens=266, completion_tokens_details=None, prompt_tokens_details=None))
+2025-06-06 14:17:43,686 - triggered.triggers.ai - ERROR - Failed to parse model response as JSON: Error: Empty response from model
