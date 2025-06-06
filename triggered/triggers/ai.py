@@ -15,11 +15,12 @@ class AITrigger(Trigger):
     """Trigger that uses AI to make decisions."""
 
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config.get("name", "ai_trigger"))
+        super().__init__(config)
         self.model = get_model(model=config.get("model"), api_base=config.get("api_base"))
         self.interval = config.get("interval", 60)
         self.prompt = config.get("prompt", "")
-        self.tools = get_tools(config.get("tools", []))
+        self.tool_configs = config.get("tools", [])
+        self.tools = get_tools(self.tool_configs)
         custom_tools_path = config.get("custom_tools_path")
         if custom_tools_path:
             load_tools_from_module(custom_tools_path)
@@ -27,24 +28,29 @@ class AITrigger(Trigger):
     async def check(self) -> Optional[TriggerContext]:
         """Check if the trigger condition is met."""
         try:
-            response = await self.model.ainvoke(self.prompt, tools=self.tools)
+            general_instruction = "You are the decision maker if to run the user action or not. You must return a JSON response with the following schema: { \"trigger\": <true|false>, \"reason\": \"<short explanation why you made the decision>\" }. Here is the user defined criteria for you to consider:"
+            full_prompt = f"{general_instruction}\n\n{self.prompt}"
+            response = await self.model.ainvoke(full_prompt, tools=self.tool_configs)
             try:
                 obj = json.loads(response)
-                if obj and obj.get("trigger"):
-                    return TriggerContext(data=obj)
+                if not isinstance(obj, dict) or "trigger" not in obj:
+                    logger.error("Model response is not a valid JSON or missing 'trigger' field: %s", response)
+                    return None
+                if obj.get("trigger"):
+                    return TriggerContext(trigger_name=self.name, data=obj)
             except json.JSONDecodeError:
                 logger.error("Failed to parse model response as JSON: %s", response)
         except Exception as e:
             logger.error("Error checking AI trigger: %s", str(e))
         return None
 
-    async def watch(self) -> None:
+    async def watch(self, queue_put) -> None:
         """Watch for trigger conditions."""
         while True:
             try:
                 ctx = await self.check()
                 if ctx is not None:
-                    yield ctx
+                    await queue_put(ctx)
             except Exception as e:
                 logger.error("Error in AI trigger watch loop: %s", str(e))
             await asyncio.sleep(self.interval) 

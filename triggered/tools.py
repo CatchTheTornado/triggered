@@ -18,8 +18,8 @@ class ToolInput(BaseModel):
 
 class RandomNumberInput(ToolInput):
     """Input schema for RandomNumberTool."""
-    min: int = Field(default=1, description="Minimum value (inclusive)")
-    max: int = Field(default=10, description="Maximum value (inclusive)")
+    min_value: int = Field(default=1, description="Minimum value (inclusive)")
+    max_value: int = Field(default=10, description="Maximum value (inclusive)")
 
 
 class Tool:
@@ -38,11 +38,11 @@ class Tool:
 class RandomNumberTool(Tool):
     """Tool that generates random numbers."""
     name = "random_number"
-    description = "Generate a random number between min and max (inclusive)"
+    description = "Generate a random number between min_value and max_value (inclusive)"
     args_schema = RandomNumberInput
 
-    async def _call(self, min: int = 1, max: int = 10) -> int:
-        return random.randint(min, max)
+    async def _call(self, min_value: int = 1, max_value: int = 10) -> str:
+        return str(random.randint(min_value, max_value))
 
 
 # Registry of available tools
