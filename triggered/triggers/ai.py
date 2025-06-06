@@ -5,30 +5,22 @@ from typing import Any, Dict, Optional
 from ..core import Trigger, TriggerContext
 from ..models import get_model
 from ..tools import get_tools, load_tools_from_module
+from ..registry import register_trigger
 
 logger = logging.getLogger(__name__)
 
 
+@register_trigger("ai")
 class AITrigger(Trigger):
     """Trigger that uses AI to make decisions."""
 
-    def __init__(
-        self,
-        name: str,
-        model: str | None = None,
-        api_base: str | None = None,
-        interval: int = 60,
-        prompt: str = "",
-        tools: list[Dict[str, Any]] | None = None,
-        custom_tools_path: str | None = None,
-        **kwargs
-    ) -> None:
-        super().__init__(name)
-        self.model = get_model(model=model, api_base=api_base, **kwargs)
-        self.interval = interval
-        self.prompt = prompt
-        self.tools = get_tools(tools or [])
-        
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__(config.get("name", "ai_trigger"))
+        self.model = get_model(model=config.get("model"), api_base=config.get("api_base"))
+        self.interval = config.get("interval", 60)
+        self.prompt = config.get("prompt", "")
+        self.tools = get_tools(config.get("tools", []))
+        custom_tools_path = config.get("custom_tools_path")
         if custom_tools_path:
             load_tools_from_module(custom_tools_path)
 
