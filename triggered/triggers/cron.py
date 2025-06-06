@@ -6,11 +6,30 @@ from croniter import croniter
 
 from ..core import Trigger, TriggerContext
 from ..registry import register_trigger
+from ..config_schema import ConfigSchema, ConfigField
 
 
 @register_trigger("cron")
 class CronTrigger(Trigger):
     """Trigger that fires according to a crontab expression."""
+
+    @classmethod
+    def get_config_schema(cls) -> 'ConfigSchema':
+        """Return the configuration schema for this trigger type."""
+        return ConfigSchema(fields=[
+            ConfigField(
+                name="name",
+                type="string",
+                description="Trigger name",
+                required=True
+            ),
+            ConfigField(
+                name="expression",
+                type="string",
+                description="Cron expression (e.g. '* * * * *')",
+                required=True
+            )
+        ])
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)

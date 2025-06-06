@@ -6,6 +6,7 @@ from ..core import Trigger, TriggerContext
 from ..models import get_model
 from ..tools import get_tools, load_tools_from_module
 from ..registry import register_trigger
+from ..config_schema import ConfigSchema, ConfigField
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,58 @@ logger = logging.getLogger(__name__)
 @register_trigger("ai")
 class AITrigger(Trigger):
     """Trigger that uses AI to make decisions."""
+
+    @classmethod
+    def get_config_schema(cls) -> 'ConfigSchema':
+        """Return the configuration schema for this trigger type."""
+        return ConfigSchema(fields=[
+            ConfigField(
+                name="name",
+                type="string",
+                description="Trigger name",
+                required=True
+            ),
+            ConfigField(
+                name="model",
+                type="string",
+                description="Model to use",
+                default="ollama/llama3.1",
+                required=True
+            ),
+            ConfigField(
+                name="api_base",
+                type="string",
+                description="API base URL",
+                default="http://localhost:11434",
+                required=True
+            ),
+            ConfigField(
+                name="interval",
+                type="integer",
+                description="Check interval in seconds",
+                default=60,
+                required=True
+            ),
+            ConfigField(
+                name="prompt",
+                type="string",
+                description="AI prompt",
+                required=True
+            ),
+            ConfigField(
+                name="tools",
+                type="array",
+                description="List of tools to use",
+                default=[],
+                required=False
+            ),
+            ConfigField(
+                name="custom_tools_path",
+                type="string",
+                description="Path to custom tools module",
+                required=False
+            )
+        ])
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)

@@ -3,6 +3,7 @@ import logging
 
 from ..core import Action, TriggerContext
 from ..registry import register_action
+from ..config_schema import ConfigSchema, ConfigField
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,18 @@ class ShellCommandAction(Action):
     Config keys:
     - command: str
     """
+
+    @classmethod
+    def get_config_schema(cls) -> 'ConfigSchema':
+        """Return the configuration schema for this action type."""
+        return ConfigSchema(fields=[
+            ConfigField(
+                name="command",
+                type="string",
+                description="Shell command to execute (can use {var} for variable substitution)",
+                required=True
+            )
+        ])
 
     async def execute(self, ctx: TriggerContext) -> dict:  # noqa: D401
         command: str = self.config["command"].format(**ctx.data)

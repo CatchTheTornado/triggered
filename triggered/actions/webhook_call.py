@@ -4,6 +4,7 @@ import httpx
 
 from ..core import Action, TriggerContext
 from ..registry import register_action
+from ..config_schema import ConfigSchema, ConfigField
 
 
 @register_action("webhook_call")
@@ -15,6 +16,30 @@ class WebhookCallAction(Action):
     - payload: dict | str (optional) with template variables like ``{var}``
     - headers: dict (optional)
     """
+
+    @classmethod
+    def get_config_schema(cls) -> 'ConfigSchema':
+        """Return the configuration schema for this action type."""
+        return ConfigSchema(fields=[
+            ConfigField(
+                name="url",
+                type="string",
+                description="Destination URL for the webhook call",
+                required=True
+            ),
+            ConfigField(
+                name="payload",
+                type="string",
+                description="Payload template with variables like {var}",
+                required=False
+            ),
+            ConfigField(
+                name="headers",
+                type="string",
+                description="HTTP headers as JSON string",
+                required=False
+            )
+        ])
 
     async def execute(self, ctx: TriggerContext) -> None:  # noqa: D401
         url: str = self.config["url"]

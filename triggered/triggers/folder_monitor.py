@@ -5,6 +5,7 @@ from typing import Dict, Any
 
 from ..core import Trigger, TriggerContext
 from ..registry import register_trigger
+from ..config_schema import ConfigSchema, ConfigField
 
 
 @register_trigger("folder")
@@ -15,6 +16,31 @@ class FolderMonitorTrigger(Trigger):
     - path: str, directory to watch
     - interval: int, polling interval (seconds, default 5)
     """
+
+    @classmethod
+    def get_config_schema(cls) -> 'ConfigSchema':
+        """Return the configuration schema for this trigger type."""
+        return ConfigSchema(fields=[
+            ConfigField(
+                name="name",
+                type="string",
+                description="Trigger name",
+                required=True
+            ),
+            ConfigField(
+                name="path",
+                type="string",
+                description="Directory path to monitor for changes",
+                required=True
+            ),
+            ConfigField(
+                name="interval",
+                type="integer",
+                description="Polling interval in seconds",
+                default=5,
+                required=False
+            )
+        ])
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)

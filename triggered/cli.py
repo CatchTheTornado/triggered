@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from .core import TriggerAction
 from .registry import get_trigger, get_action
+from .config_schema import get_trigger_config_schema, get_action_config_schema
 
 
 # ---------------------------------------------------------------------------
@@ -45,13 +46,13 @@ class ActionConfig(BaseModel):
 
 def get_available_trigger_types() -> list[str]:
     """Get list of available trigger types."""
-    # This should be implemented to return actual trigger types from registry
-    return ["ai", "cron", "webhook", "folder"]
+    from .registry import TRIGGER_REGISTRY
+    return list(TRIGGER_REGISTRY.keys())
 
 def get_available_action_types() -> list[str]:
     """Get list of available action types."""
-    # This should be implemented to return actual action types from registry
-    return ["shell", "webhook_call", "ai_agent", "python_script", "typescript_script"]
+    from .registry import ACTION_REGISTRY
+    return list(ACTION_REGISTRY.keys())
 
 def get_trigger_schema(trigger_type: str) -> Dict[str, Any]:
     """Get schema for trigger type."""
@@ -84,72 +85,44 @@ def get_action_schema(action_type: str) -> Dict[str, Any]:
         }
     return {}
 
-def interactive_trigger_config(trigger_type: str) -> Dict[str, Any]:
-    """Interactive prompt for trigger configuration."""
+def interactive_config_from_schema(schema, title: str) -> Dict[str, Any]:
+    """Interactive prompt for configuration based on schema."""
     config = {}
     
-    console.print(Panel(f"Configuring {trigger_type} trigger", style="bold blue"))
+    console.print(Panel(title, style="bold blue"))
     
-    if trigger_type == "ai":
-        config["name"] = Prompt.ask("Trigger name")
-        config["model"] = Prompt.ask("Model", default="ollama/llama3.1")
-        config["api_base"] = Prompt.ask("API base", default="http://localhost:11434")
-        config["interval"] = int(Prompt.ask("Check interval (seconds)", default="60"))
-        config["prompt"] = Prompt.ask("AI prompt")
-        config["tools"] = []
-        if Confirm.ask("Add tools?"):
-            while True:
-                tool_type = Prompt.ask("Tool type", choices=["random_number"])
-                config["tools"].append({"type": tool_type})
-                if not Confirm.ask("Add another tool?"):
-                    break
-    elif trigger_type == "cron":
-        config["name"] = Prompt.ask("Trigger name")
-        config["expression"] = Prompt.ask("Cron schedule (e.g. '*/5 * * * *')")
-    elif trigger_type == "webhook":
-        config["name"] = Prompt.ask("Trigger name")
-        config["route"] = Prompt.ask("Webhook path", default="/webhook")
-    elif trigger_type == "folder":
-        config["name"] = Prompt.ask("Trigger name")
-        config["path"] = Prompt.ask("Folder to monitor")
-        config["interval"] = int(Prompt.ask("Check interval (seconds)", default="5"))
-        config["patterns"] = Prompt.ask("File patterns (comma-separated)", default="*")
-    
-    return config
-
-def interactive_action_config(action_type: str) -> Dict[str, Any]:
-    """Interactive prompt for action configuration."""
-    config = {}
-    
-    console.print(Panel(f"Configuring {action_type} action", style="bold green"))
-    
-    if action_type == "shell":
-        config["command"] = Prompt.ask("Shell command to execute")
-    elif action_type == "webhook_call":
-        config["url"] = Prompt.ask("HTTP URL")
-        config["payload"] = Prompt.ask("Payload template (optional)", default="{}")
-        config["headers"] = {}
-        if Confirm.ask("Add headers?"):
-            while True:
-                key = Prompt.ask("Header name")
-                value = Prompt.ask("Header value")
-                config["headers"][key] = value
-                if not Confirm.ask("Add another header?"):
-                    break
-    elif action_type == "ai_agent":
-        config["model"] = Prompt.ask("Model name", default="ollama/llama3.1")
-        config["prompt"] = Prompt.ask("AI prompt")
-        config["tools"] = []
-        if Confirm.ask("Add tools?"):
-            while True:
-                tool_type = Prompt.ask("Tool type", choices=["random_number"])
-                config["tools"].append({"type": tool_type})
-                if not Confirm.ask("Add another tool?"):
-                    break
-    elif action_type == "python_script":
-        config["path"] = Prompt.ask("Path to Python script")
-    elif action_type == "typescript_script":
-        config["path"] = Prompt.ask("Path to TypeScript script")
+    for field in schema.fields:
+        if field.type == "string":
+            value = Prompt.ask(
+                field.description,
+                default=str(field.default) if field.default is not None else None,
+                show_default=field.default is not None
+            )
+            config[field.name] = value
+        elif field.type == "integer":
+            value = Prompt.ask(
+                field.description,
+                default=str(field.default) if field.default is not None else None,
+                show_default=field.default is not None
+            )
+            config[field.name] = int(value)
+        elif field.type == "array":
+            if Confirm.ask(f"Add {field.description.lower()}?"):
+                items = []
+                while True:
+                    if field.choices:
+                        item = Prompt.ask(
+                            f"Select {field.description.lower()} item",
+                            choices=field.choices
+                        )
+                    else:
+                        item = Prompt.ask(f"Enter {field.description.lower()} item")
+                    items.append(item)
+                    if not Confirm.ask("Add another?"):
+                        break
+                config[field.name] = items
+            else:
+                config[field.name] = field.default or []
     
     return config
 
@@ -196,9 +169,18 @@ def add_trigger(
             default=action_types[0]
         )
         
-        # Get configurations interactively
-        trigger_config = interactive_trigger_config(trigger_type)
-        action_config = interactive_action_config(action_type)
+        # Get configurations interactively using schemas
+        trigger_schema = get_trigger_config_schema(trigger_type)
+        action_schema = get_action_config_schema(action_type)
+        
+        trigger_config = interactive_config_from_schema(
+            trigger_schema,
+            f"Configuring {trigger_type} trigger"
+        )
+        action_config = interactive_config_from_schema(
+            action_schema,
+            f"Configuring {action_type} action"
+        )
     else:
         # Non-interactive mode
         if not all([trigger_type, action_type, trigger_config_path, action_config_path]):

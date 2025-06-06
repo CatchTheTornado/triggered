@@ -25,6 +25,19 @@ class Trigger(abc.ABC):
         self.config = config
         self.name = config.get("name", self.__class__.__name__)
 
+    @classmethod
+    def get_config_schema(cls) -> 'ConfigSchema':
+        """Return the configuration schema for this trigger type."""
+        from .config_schema import ConfigSchema, ConfigField
+        return ConfigSchema(fields=[
+            ConfigField(
+                name="name",
+                type="string",
+                description="Trigger name",
+                required=True
+            )
+        ])
+
     @abc.abstractmethod
     async def watch(self, queue_put) -> None:  # noqa: D401
         """Continuously watch for trigger events and schedule actions.
@@ -46,6 +59,12 @@ class Action(abc.ABC):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
+
+    @classmethod
+    def get_config_schema(cls) -> 'ConfigSchema':
+        """Return the configuration schema for this action type."""
+        from .config_schema import ConfigSchema
+        return ConfigSchema(fields=[])
 
     @abc.abstractmethod
     async def execute(self, ctx: TriggerContext) -> None:  # noqa: D401
