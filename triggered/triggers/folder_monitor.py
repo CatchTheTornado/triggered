@@ -72,4 +72,7 @@ class FolderMonitorTrigger(Trigger):
                     trigger_name=self.name,
                     data={"files_changed": diff_files},
                 )
-                await queue_put(ctx) 
+                await queue_put(ctx)
+
+            ctx = TriggerContext(trigger_name=self.name)
+            await queue_put(ctx) 
