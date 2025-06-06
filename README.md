@@ -6,7 +6,7 @@ A runtime engine that executes user-defined actions based on various triggers, i
 
 - Cron-style triggers for time-based execution
 - Filesystem event triggers for file/directory monitoring
-- AI-driven triggers using local or remote LLMs
+- AI-driven triggers using LiteLLM with local Ollama models
 - Extensible architecture for new trigger and action types
 - FastAPI server for management APIs
 - Built-in tools for AI triggers (weather, current date, etc.)
@@ -27,7 +27,7 @@ $ ./scripts/install.sh           # full setup (installs Redis if missing)
 $ NO_REDIS=1 ./scripts/install.sh  # uses Celery's in-memory broker
 
 # Option 2 – Manual Poetry install
-$ poetry install --extras "local-model"
+$ poetry install
 ```
 
 The installer will:
@@ -131,94 +131,36 @@ You can extend the system with custom tools in two ways:
    ```
 
 2. **Python Module**
-   Create a Python module with your custom tools:
-
-   ```python
-   # custom_tools.py
-   from triggered.tools import BaseTool, ToolInput
-   from pydantic import Field
-
-   class MyToolInput(ToolInput):
-       param1: str = Field(..., description="First parameter")
-
-   class MyCustomTool(BaseTool):
-       name: str = "my_custom_tool"
-       description: str = "My custom tool description"
-       args_schema: Type[BaseModel] = MyToolInput
-
-       async def _run(self, param1: str) -> str:
-           # Your tool implementation
-           return f"Processed {param1}"
-   ```
-
-   Then reference it in your trigger configuration:
+   Create a Python module with your custom tools and specify its path:
 
    ```json
    {
      "type": "ai",
-     "name": "custom-tool-example",
-     "prompt": "Use my custom tool",
+     "name": "custom-tools-example",
+     "prompt": "Use my custom tools",
      "model": "local",
-     "custom_tools_path": "path/to/custom_tools.py",
-     "tools": [
-       {
-         "type": "my_custom_tool",
-         "name": "my_tool"
-       }
-     ]
+     "custom_tools_path": "path/to/my_tools.py"
    }
    ```
 
-### Tool Development Guidelines
+## Using LiteLLM with Local Ollama
 
-When creating custom tools:
+The project uses LiteLLM to interact with local Ollama models. By default, it uses the `llama2` model running on `localhost:11434`. You can configure this using environment variables:
 
-1. Inherit from `BaseTool` and define required attributes:
-   - `name`: Unique identifier for the tool
-   - `description`: Clear description of what the tool does
-   - `args_schema`: Pydantic model for input validation
-
-2. Implement the `_run` method:
-   - Must be async
-   - Should handle errors gracefully
-   - Return string results
-
-3. Use Pydantic for input validation:
-   - Define input schemas using `ToolInput` as base
-   - Add field descriptions for better AI understanding
-
-4. Consider adding environment variables for sensitive data:
-   - API keys
-   - Credentials
-   - Configuration values
-
-Example of a well-structured custom tool:
-
-```python
-from triggered.tools import BaseTool, ToolInput
-from pydantic import Field
-import os
-
-class APIToolInput(ToolInput):
-    query: str = Field(..., description="The query to process")
-    max_results: int = Field(5, description="Maximum number of results")
-
-class APITool(BaseTool):
-    name: str = "api_tool"
-    description: str = "Makes API calls to external service"
-    args_schema: Type[BaseModel] = APIToolInput
-
-    async def _run(self, query: str, max_results: int) -> str:
-        api_key = os.getenv("API_KEY")
-        if not api_key:
-            return "Error: API_KEY not set"
-            
-        try:
-            # Your API implementation
-            return f"Processed {query} with {max_results} results"
-        except Exception as e:
-            return f"Error: {str(e)}"
+```bash
+# Optional - defaults shown
+export LITELLM_MODEL="ollama/llama2"  # Default model
+export LITELLM_API_BASE="http://localhost:11434"  # Default API base
 ```
+
+Make sure you have Ollama installed and running locally. You can install it following the instructions at [ollama.ai](https://ollama.ai).
+
+To use a different model, first pull it with Ollama:
+```bash
+ollama pull llama2  # or any other model you want to use
+```
+
+Then update the `LITELLM_MODEL` environment variable to match the model name.
 
 ## Example: AI-driven process listing
 

@@ -1,8 +1,8 @@
 import asyncio
 import logging
-from typing import Dict
+from typing import Dict, Any, Optional
 import os
-import ollama
+from litellm import completion, ModelResponse
 
 logger = logging.getLogger(__name__)
 
@@ -19,83 +19,18 @@ class DummyModel(BaseModelAdapter):
         return "yes"
 
 
-try:
-    from llama_cpp import Llama  # noqa: WPS433
+class LiteLLMModel(BaseModelAdapter):
+    """Adapter that uses LiteLLM to interact with various LLM providers."""
 
-    class LlamaCppModel(BaseModelAdapter):
-        """Adapter that lazy-loads a GGUF model from Hugging Face Hub using
-        the built-in *from_pretrained* helper so we don't have to download
-        files manually in the install script.
-
-        Parameters
-        ----------
-        repo_id: str
-            HF repository slug (``owner/repo``) containing the GGUF file.
-        filename: str
-            Name of the GGUF file inside the repo.
-        """
-
-        def __init__(
-            self,
-            repo_id: str | None = None,
-            filename: str | None = None,
-            n_threads: int = 4,
-        ) -> None:
-            repo_id_env = os.getenv("LLM_REPO_ID")
-            filename_env = os.getenv("LLM_FILENAME")
-
-            candidate_repos = [
-                repo_id_env,
-                repo_id,
-                "unsloth/Llama-3-8B-Instruct-GGUF"
-            ]
-
-            filename_default = (
-                filename_env
-                or filename
-                or "llama-3-8b-instruct.Q4_K_M.gguf"
-            )
-
-            last_exc: Exception | None = None
-            for rid in filter(None, candidate_repos):
-                try:
-                    logger.info(
-                        "Attempting to load %s/%s",
-                        rid,
-                        filename_default,
-                    )
-                    self._llm = Llama.from_pretrained(
-                        repo_id=rid,
-                        filename=filename_default,
-                        n_threads=n_threads,
-                    )
-                    break
-                except Exception as exc:  # noqa: WPS420
-                    logger.warning("Could not load %s: %s", rid, exc)
-                    last_exc = exc
-                    continue
-            else:
-                raise RuntimeError(
-                    "Failed to fetch any GGUF model; "
-                    "set LLM_REPO_ID / LLM_FILENAME",
-                ) from last_exc
-
-        async def ainvoke(self, prompt: str, **kwargs):  # noqa: D401
-            # llama-cpp is sync; offload to thread pool
-            loop = asyncio.get_running_loop()
-            response = await loop.run_in_executor(None, self._llm, prompt)
-            return response["choices"][0]["text"].strip()
-
-except ImportError:  # noqa: WPS440
-    LlamaCppModel = None  # type: ignore
-
-
-class OllamaModel(BaseModelAdapter):
-    """Adapter that talks to a local Ollama server via HTTP."""
-
-    def __init__(self, model: str | None = None):
-        self.model = model or os.getenv("OLLAMA_MODEL", "llama3.1")
-        self.base_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    def __init__(
+        self,
+        model: str | None = None,
+        api_base: str | None = None,
+        **kwargs
+    ) -> None:
+        self.model = model or os.getenv("LITELLM_MODEL", "ollama/llama3.1")
+        self.api_base = api_base or os.getenv("LITELLM_API_BASE", "http://localhost:11434")
+        self.kwargs = kwargs
 
     async def ainvoke(self, prompt: str, tools: list | None = None) -> str:
         try:
@@ -110,86 +45,44 @@ class OllamaModel(BaseModelAdapter):
                 }
                 messages.insert(0, system_message)
             
-            # Run the synchronous chat method in a thread pool
+            # Run the completion in a thread pool since it's sync
             loop = asyncio.get_running_loop()
-            resp = await loop.run_in_executor(
+            response = await loop.run_in_executor(
                 None,
-                lambda: ollama.chat(
+                lambda: completion(
                     model=self.model,
-                    messages=messages
+                    messages=messages,
+                    api_base=self.api_base,
+                    **self.kwargs
                 )
             )
             
-            if not resp:
-                logger.error("Empty response from Ollama API")
-                return "Error: Empty response from model"
+            if not isinstance(response, ModelResponse):
+                logger.error("Invalid response type from LiteLLM: %s", type(response))
+                return "Error: Invalid response from model"
                 
-            message = resp.get("message", {})
-            if not message:
-                logger.error("No message in Ollama response: %s", resp)
-                return "Error: Invalid response format from model"
+            if not response.choices:
+                logger.error("No choices in LiteLLM response: %s", response)
+                return "Error: No response from model"
                 
-            content = message.get("content", "")
+            content = response.choices[0].message.content
             if not content:
-                logger.error("No content in Ollama message: %s", message)
+                logger.error("No content in LiteLLM response: %s", response)
                 return "Error: Empty response from model"
                 
             return content
             
         except Exception as e:
-            if "model not found" in str(e).lower():
-                logger.info(
-                    "Model %s missing, attempting ollama pull…",
-                    self.model,
-                )
-                try:
-                    # Run pull in thread pool
-                    await loop.run_in_executor(
-                        None, 
-                        lambda: ollama.pull(self.model)
-                    )
-                    # Run chat again in thread pool
-                    resp = await loop.run_in_executor(
-                        None,
-                        lambda: ollama.chat(
-                            model=self.model,
-                            messages=messages
-                        )
-                    )
-                    
-                    if not resp:
-                        logger.error("Empty response after model pull")
-                        return "Error: Empty response from model"
-                        
-                    message = resp.get("message", {})
-                    if not message:
-                        logger.error("No message in response after pull: %s", resp)
-                        return "Error: Invalid response format from model"
-                        
-                    content = message.get("content", "")
-                    if not content:
-                        logger.error("No content in message after pull: %s", message)
-                        return "Error: Empty response from model"
-                        
-                    return content
-                    
-                except Exception as pull_error:
-                    logger.error(
-                        "Failed to pull or use model: %s", 
-                        str(pull_error)
-                    )
-                    return f"Error: Failed to load model - {str(pull_error)}"
-                    
-            logger.error("Ollama API error: %s", str(e))
+            logger.error("LiteLLM API error: %s", str(e))
             return f"Error: {str(e)}"
 
 
 # fallback detection
 try:
-    _test = os.getenv("DISABLE_OLLAMA")  # to optionally skip
-    _OLLAMA_AVAILABLE = True if _test is None else False
+    _test = os.getenv("DISABLE_LITELLM")  # to optionally skip
+    _LITELLM_AVAILABLE = True if _test is None else False
 except Exception:
-    _OLLAMA_AVAILABLE = False
+    _LITELLM_AVAILABLE = False
 
 
 _MODEL_CACHE: Dict[str, BaseModelAdapter] = {}
@@ -201,12 +94,10 @@ def get_model(name: str = "local") -> BaseModelAdapter:
 
     if name == "local":
         try:
-            if _OLLAMA_AVAILABLE:
-                model = OllamaModel()
-            elif LlamaCppModel is not None:
-                model = LlamaCppModel()
+            if _LITELLM_AVAILABLE:
+                model = LiteLLMModel()
             else:
-                raise RuntimeError("No local LLM backend available")
+                raise RuntimeError("No LLM backend available")
         except Exception as exc:  # noqa: WPS420
             logger.error("Local model init failed: %s; using Dummy", exc)
             model = DummyModel()

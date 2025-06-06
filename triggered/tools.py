@@ -196,8 +196,8 @@ def get_tools(tool_configs: list[Dict[str, Any]]) -> Dict[str, BaseTool]:
     return tools
 
 
-def get_ollama_tools(tool_configs: list[Dict[str, Any]]) -> list:
-    """Convert configured tools to Ollama format."""
+def get_litellm_tools(tool_configs: list[Dict[str, Any]]) -> list:
+    """Convert configured tools to LiteLLM format."""
     tools = []
     for config in tool_configs:
         tool = create_tool(config)

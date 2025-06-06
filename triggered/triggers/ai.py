@@ -9,8 +9,8 @@ import re
 
 from ..core import Trigger, TriggerContext
 from ..registry import register_trigger
-from ..models import get_model, OllamaModel
-from ..tools import get_tools, get_ollama_tools, load_tools_from_module
+from ..models import get_model
+from ..tools import get_tools, get_litellm_tools, load_tools_from_module
 
 logger = logging.getLogger(__name__)
 
@@ -51,68 +51,21 @@ class AITrigger(Trigger):
             "\"reason\": \"<short explanation why you made the decision>\" }"
         )
 
-        if "prompt_template_file" in config:
-            self.template_source = (
-                Path(config["prompt_template_file"]).read_text()
-            )
-        elif "prompt_template" in config:
-            self.template_source = config["prompt_template"]
-        else:
-            self.template_source = DEFAULT_TEMPLATE
-
-        # Variables injected into template (merge env later)
+        self.template_source = config.get("template", DEFAULT_TEMPLATE)
         self.prompt_vars = config.get("prompt_vars", {})
 
-        # inline prompt becomes default custom_prompt variable
-        inline_prompt = config.get("prompt", "")
-        self.prompt_vars.setdefault("custom_prompt", inline_prompt)
-
-    async def watch(self, queue_put):
-        while True:
-            decision_obj = await self._evaluate()
-            if decision_obj and decision_obj.get("trigger"):
-                ctx = TriggerContext(
-                    trigger_name=self.name,
-                    data={
-                        "reason": decision_obj.get("reason", ""),
-                        "trigger": True,
-                        "raw": decision_obj.get("raw", ""),
-                    },
-                )
-                await queue_put(ctx)
-            await asyncio.sleep(self.interval)
-
     def _extract_json(self, text: str) -> str | None:
-        """Extract JSON from text, handling various formats and positions.
-        
-        Parameters
-        ----------
-        text : str
-            The text to extract JSON from
-            
-        Returns
-        -------
-        str | None
-            The extracted JSON string or None if no valid JSON found
-        """
-        # First try to find JSON in code blocks
-        code_block_pattern = r"```(?:json)?\s*(\{[\s\S]*?\})\s*```"
-        code_matches = re.findall(code_block_pattern, text)
-        if code_matches:
-            return code_matches[0].strip()
+        """Extract JSON from text, handling various formats."""
+        # Try to find JSON between triple backticks
+        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+        if match:
+            return match.group(1)
 
-        # Then try to find any JSON object in the text
-        json_pattern = r"(\{[\s\S]*?\})"
-        json_matches = re.findall(json_pattern, text)
-        
-        for match in json_matches:
-            try:
-                # Try to parse as JSON to validate
-                json.loads(match)
-                return match.strip()
-            except json.JSONDecodeError:
-                continue
-                
+        # Try to find JSON between curly braces
+        match = re.search(r"(\{.*\})", text, re.DOTALL)
+        if match:
+            return match.group(1)
+
         return None
 
     async def _evaluate(self):
@@ -123,10 +76,8 @@ class AITrigger(Trigger):
         prompt_vars = {**self.prompt_vars, **os.environ}
         prompt = template.render(**prompt_vars)
 
-        # Convert tools to Ollama format if using Ollama model
-        tools = None
-        if isinstance(self.model, OllamaModel):
-            tools = get_ollama_tools(self.tool_configs)
+        # Convert tools to LiteLLM format
+        tools = get_litellm_tools(self.tool_configs)
         
         response = await self.model.ainvoke(prompt, tools=tools)
 
