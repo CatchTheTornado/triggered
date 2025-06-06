@@ -51,28 +51,20 @@ This will make the `triggered` command available in your shell.
 ollama pull llama3.1
 ```
 
-2. Create a trigger configuration file (e.g., `triggers/my_trigger.json`):
-```json
-{
-    "trigger_type": "ai",
-    "trigger_config": {
-        "name": "my_trigger",
-        "model": "ollama/llama3.1",
-        "api_base": "http://localhost:11434",
-        "interval": 60,
-        "prompt": "Your prompt here",
-        "tools": [
-            {
-                "type": "random_number"
-            }
-        ]
-    },
-    "action_type": "shell",
-    "action_config": {
-        "command": "echo 'Action triggered!'"
-    }
-}
+2. Create a trigger configuration file using the interactive CLI:
+```bash
+# Start interactive trigger creation
+triggered add
+
+# Or create from JSON configs
+triggered add --trigger-type ai --action-type shell --trigger-config-path trigger.json --action-config-path action.json
 ```
+
+The interactive mode will guide you through:
+- Selecting trigger type (AI, Cron, Webhook, Folder)
+- Selecting action type (Shell, HTTP, Notification)
+- Configuring trigger-specific settings
+- Configuring action-specific settings
 
 3. List available triggers:
 ```bash
