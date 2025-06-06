@@ -20,7 +20,7 @@ from .config_schema import get_trigger_config_schema, get_action_config_schema
 from .logging_config import (
     setup_logging, LOGS_DIR, set_log_level, 
     log_trigger_check, log_action_start, log_action_result,
-    log_telemetry, log_result_details
+    log_telemetry, log_result_details, console
 )
 
 
@@ -111,7 +111,7 @@ def interactive_config_from_schema(schema, title: str) -> Dict[str, Any]:
     """Interactive prompt for configuration based on schema."""
     config = {}
     
-    logger.info(Panel(title, style="bold blue"))
+    console.print(Panel(title, style="bold blue"))
     
     for field in schema.fields:
         if field.type == "string":
@@ -152,7 +152,7 @@ def print_app_title():
     """Print the application title with Rich formatting."""
     title = Text("Triggered", style="bold blue")
     subtitle = Text("AI-powered triggers and actions", style="italic cyan")
-    logger.info(Panel(
+    console.print(Panel(
         Text.assemble(title, "\n", subtitle),
         border_style="blue",
         padding=(1, 2)
@@ -177,7 +177,7 @@ def add_trigger(
     
     # Interactive mode if no arguments provided
     if not any([trigger_type, action_type, trigger_config_path, action_config_path]):
-        logger.info(Panel("Interactive Trigger Creation", style="bold yellow"))
+        console.print(Panel("Interactive Trigger Creation", style="bold yellow"))
         
         # Select trigger type
         trigger_types = get_available_trigger_types()
@@ -186,7 +186,7 @@ def add_trigger(
         trigger_table.add_column("Description", style="green")
         for t in trigger_types:
             trigger_table.add_row(t, f"{t.capitalize()} trigger")
-        logger.info(trigger_table)
+        console.print(trigger_table)
         
         trigger_type = Prompt.ask(
             "Select trigger type",
@@ -201,7 +201,7 @@ def add_trigger(
         action_table.add_column("Description", style="green")
         for t in action_types:
             action_table.add_row(t, f"{t.capitalize()} action")
-        logger.info(action_table)
+        console.print(action_table)
         
         action_type = Prompt.ask(
             "Select action type",
@@ -224,7 +224,7 @@ def add_trigger(
     else:
         # Non-interactive mode
         if not all([trigger_type, action_type, trigger_config_path, action_config_path]):
-            logger.error("Error: All arguments are required in non-interactive mode")
+            console.print("[red]Error: All arguments are required in non-interactive mode[/red]")
             return
             
         trigger_config = json.loads(trigger_config_path.read_text())
@@ -241,7 +241,7 @@ def add_trigger(
     file_path.write_text(
         json.dumps(ta.dict(), indent=2),
     )
-    logger.info(
+    console.print(
         Panel(
             f"[bold green]Created trigger file:[/bold green] {file_path}\n"
             f"Auth key: {ta.auth_key}",
@@ -276,8 +276,8 @@ def start(
     server_info.add_row("Logs directory", str(LOGS_DIR))
     server_info.add_row("Log level", log_level or os.getenv("TRIGGERED_LOG_LEVEL", "INFO"))
     
-    logger.info(server_info)
-    logger.info("\n[bold blue]Starting server...[/bold blue]")
+    console.print(server_info)
+    console.print("\n[bold blue]Starting server...[/bold blue]")
     
     uvicorn.run("triggered.server:app", host=host, port=port, reload=reload)
 
@@ -296,12 +296,12 @@ def ls(
     print_app_title()
     
     if not TRIGGER_DIR.exists():
-        logger.warning("No triggers directory found.")
+        console.print("[yellow]No triggers directory found.[/yellow]")
         return
 
     triggers = list(TRIGGER_DIR.glob("*.json"))
     if not triggers:
-        logger.warning("No triggers found.")
+        console.print("[yellow]No triggers found.[/yellow]")
         return
 
     trigger_table = Table(title="Available Triggers", show_header=True, header_style="bold magenta")
@@ -317,7 +317,7 @@ def ls(
             data["action_type"]
         )
     
-    logger.info(trigger_table)
+    console.print(trigger_table)
 
 
 # ---------------------------------------------------------------------------
@@ -353,10 +353,10 @@ def run_trigger_once(
         path_obj = TRIGGER_DIR / path_obj
 
     if not path_obj.exists():
-        logger.error(f"Error: Trigger file not found: {path_obj}")
+        console.print(f"[red]Error: Trigger file not found: {path_obj}[/red]")
         return
 
-    logger.info(f"[bold blue]Running trigger:[/bold blue] {path_obj}")
+    console.print(f"[bold blue]Running trigger:[/bold blue] {path_obj}")
     asyncio.run(_execute_ta_once(path_obj))
 
 

@@ -2,11 +2,11 @@ import os
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from rich.logging import RichHandler
 from rich.console import Console
 from rich.theme import Theme
 from rich.text import Text
-from typing import Any
 import json
 from rich.syntax import Syntax
 
@@ -35,47 +35,28 @@ logger = logging.getLogger("triggered")
 
 def log_telemetry(message: str):
     """Log telemetry message."""
-    logger.info(f"[telemetry]{message}[/telemetry]")
+    logger.debug(f"LLM raw: {message}")
 
 def log_result_details(result: Any):
-    """Log result details with syntax highlighting."""
+    """Log result details."""
     if result:
-        logger.info("[bold blue]Result details:[/bold blue]")
-        logger.info(Syntax(json.dumps(result, indent=2), "json", theme="monokai"))
+        logger.debug(f"Result details: {json.dumps(result, indent=2)}")
 
 def log_action_result(action_name: str, result: Any = None, error: str = None):
     """Log a formatted action result message."""
     if error:
-        message = Text.assemble(
-            Text(f"[{action_name}] ", style="action"),
-            Text("❌ Failed", style="error"),
-            Text(f" - {error}", style="error")
-        )
+        logger.error(f"Action {action_name} failed: {error}")
     else:
-        message = Text.assemble(
-            Text(f"[{action_name}] ", style="action"),
-            Text("✓ Completed", style="success"),
-            Text(" - " + str(result) if result else "", style="info")
-        )
-    logger.info(message)
+        logger.info(f"Action {action_name} completed: {result}")
 
 def log_trigger_check(trigger_name: str, triggered: bool, reason: str = None):
     """Log a formatted trigger check result."""
-    status = Text("✓ TRIGGERED", style="success") if triggered else Text("✗ SKIPPED", style="warning")
-    message = Text.assemble(
-        Text(f"[{trigger_name}] ", style="trigger"),
-        status,
-        Text(f" - {reason}" if reason else "", style="info")
-    )
-    logger.info(message)
+    status = "TRIGGERED" if triggered else "SKIPPED"
+    logger.info(f"Trigger {trigger_name} {status}: {reason}")
 
 def log_action_start(action_name: str):
     """Log a formatted action start message."""
-    message = Text.assemble(
-        Text(f"[{action_name}] ", style="action"),
-        Text("Starting action", style="info")
-    )
-    logger.info(message)
+    logger.info(f"Starting action {action_name}")
 
 def set_log_level(level: str):
     """Set the logging level for all handlers."""
@@ -96,7 +77,7 @@ def set_log_level(level: str):
         "triggered": numeric_level,
         "uvicorn": numeric_level,
         "fastapi": numeric_level,
-        "litellm": logging.DEBUG,  # Always set LiteLLM to DEBUG
+        "litellm": logging.ERROR,  # Always set LiteLLM to ERROR
     }
     
     for logger_name, level in loggers.items():
@@ -137,7 +118,7 @@ def setup_logging():
         "triggered": logging.INFO,
         "uvicorn": logging.INFO,
         "fastapi": logging.INFO,
-        "litellm": logging.ERROR,  # Always set LiteLLM to DEBUG
+        "litellm": logging.ERROR,  # Always set LiteLLM to ERROR
     }
 
     for logger_name, level in loggers.items():
