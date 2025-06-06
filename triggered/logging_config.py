@@ -38,25 +38,40 @@ def log_telemetry(message: str):
     logger.debug(f"LLM raw: {message}")
 
 def log_result_details(result: Any):
-    """Log result details."""
+    """Log result details with Rich formatting."""
     if result:
-        logger.debug(f"Result details: {json.dumps(result, indent=2)}")
+        # Display nicely formatted result in console
+        console.print(Syntax(json.dumps(result, indent=2), "json", theme="monokai"))
+        # Log to file
+        logger.info(f"Result details: {json.dumps(result, indent=2)}")
 
 def log_action_result(action_name: str, result: Any = None, error: str = None):
     """Log a formatted action result message."""
     if error:
-        logger.error(f"Action {action_name} failed: {error}")
+        # Display error in console with Rich formatting
+        console.print(f"[red]Action {action_name} ❌ Failed: {error}[/red]")
+        # Log to file
+        logger.error(f"Action {action_name} ❌ Failed: {error}")
     else:
-        logger.info(f"Action {action_name} completed: {result}")
+        # Display success in console with Rich formatting
+        console.print(f"[green]Action {action_name} ✓ Completed: {result}[/green]")
+        # Log to file
+        logger.info(f"Action {action_name} ✓ Completed: {result}")
 
 def log_trigger_check(trigger_name: str, triggered: bool, reason: str = None):
     """Log a formatted trigger check result."""
-    status = "TRIGGERED" if triggered else "SKIPPED"
+    status = "✓ TRIGGERED" if triggered else "✗ SKIPPED"
+    # Display in console with Rich formatting
+    console.print(f"[cyan]Trigger {trigger_name} {status}: {reason}[/cyan]")
+    # Log to file
     logger.info(f"Trigger {trigger_name} {status}: {reason}")
 
 def log_action_start(action_name: str):
     """Log a formatted action start message."""
-    logger.info(f"Starting action {action_name}")
+    # Display in console with Rich formatting
+    console.print(f"[green]Action {action_name} 🚀 Starting[/green]")
+    # Log to file
+    logger.info(f"Action {action_name} 🚀 Starting")
 
 def set_log_level(level: str):
     """Set the logging level for all handlers."""
@@ -77,7 +92,7 @@ def set_log_level(level: str):
         "triggered": numeric_level,
         "uvicorn": numeric_level,
         "fastapi": numeric_level,
-        "litellm": logging.ERROR,  # Always set LiteLLM to ERROR
+        "LiteLLM": logging.ERROR,  # Always set LiteLLM to ERROR
     }
     
     for logger_name, level in loggers.items():
@@ -103,7 +118,8 @@ def setup_logging():
         console=console,
         show_time=True,
         show_path=False,
-        rich_tracebacks=True
+        rich_tracebacks=True,
+        markup=True  # Enable markup in console output
     )
     console_handler.setLevel(logging.INFO)  # Default to INFO for console
 
@@ -118,7 +134,7 @@ def setup_logging():
         "triggered": logging.INFO,
         "uvicorn": logging.INFO,
         "fastapi": logging.INFO,
-        "litellm": logging.ERROR,  # Always set LiteLLM to ERROR
+        "LiteLLM": logging.ERROR,  # Always set LiteLLM to ERROR
     }
 
     for logger_name, level in loggers.items():
