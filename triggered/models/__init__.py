@@ -69,7 +69,6 @@ class LiteLLMModel(BaseModelAdapter):
 
             # DEBUG: Log the outgoing request
             logger.debug(f"Sending to LiteLLM: messages={messages}, tools={litellm_tools}")
-            print(f"[DEBUG] Sending to LiteLLM: messages={messages}, tools={litellm_tools}")
             
             # Run the completion in a thread pool since it's sync
             loop = asyncio.get_running_loop()

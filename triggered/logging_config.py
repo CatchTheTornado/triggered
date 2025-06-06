@@ -5,6 +5,10 @@ from pathlib import Path
 from rich.logging import RichHandler
 from rich.console import Console
 from rich.theme import Theme
+from rich.text import Text
+from typing import Any
+import json
+from rich.syntax import Syntax
 
 # Create logs directory if it doesn't exist
 LOGS_PATH = os.getenv("TRIGGERED_LOGS_PATH", "logs")
@@ -21,8 +25,57 @@ console = Console(theme=Theme({
     "error": "red",
     "success": "green",
     "server": "blue",
-    "telemetry": "magenta"
+    "telemetry": "magenta",
+    "trigger": "bold cyan",
+    "action": "bold green"
 }))
+
+# Create logger
+logger = logging.getLogger("triggered")
+
+def log_telemetry(message: str):
+    """Log telemetry message."""
+    logger.info(f"[telemetry]{message}[/telemetry]")
+
+def log_result_details(result: Any):
+    """Log result details with syntax highlighting."""
+    if result:
+        logger.info("[bold blue]Result details:[/bold blue]")
+        logger.info(Syntax(json.dumps(result, indent=2), "json", theme="monokai"))
+
+def log_action_result(action_name: str, result: Any = None, error: str = None):
+    """Log a formatted action result message."""
+    if error:
+        message = Text.assemble(
+            Text(f"[{action_name}] ", style="action"),
+            Text("❌ Failed", style="error"),
+            Text(f" - {error}", style="error")
+        )
+    else:
+        message = Text.assemble(
+            Text(f"[{action_name}] ", style="action"),
+            Text("✓ Completed", style="success"),
+            Text(" - " + str(result) if result else "", style="info")
+        )
+    logger.info(message)
+
+def log_trigger_check(trigger_name: str, triggered: bool, reason: str = None):
+    """Log a formatted trigger check result."""
+    status = Text("✓ TRIGGERED", style="success") if triggered else Text("✗ SKIPPED", style="warning")
+    message = Text.assemble(
+        Text(f"[{trigger_name}] ", style="trigger"),
+        status,
+        Text(f" - {reason}" if reason else "", style="info")
+    )
+    logger.info(message)
+
+def log_action_start(action_name: str):
+    """Log a formatted action start message."""
+    message = Text.assemble(
+        Text(f"[{action_name}] ", style="action"),
+        Text("Starting action", style="info")
+    )
+    logger.info(message)
 
 def set_log_level(level: str):
     """Set the logging level for all handlers."""
@@ -38,11 +91,12 @@ def set_log_level(level: str):
     # Update root logger level
     logging.getLogger().setLevel(numeric_level)
     
-    # Update specific loggers
+    # Configure specific loggers
     loggers = {
         "triggered": numeric_level,
         "uvicorn": numeric_level,
         "fastapi": numeric_level,
+        "litellm": logging.DEBUG,  # Always set LiteLLM to DEBUG
     }
     
     for logger_name, level in loggers.items():
@@ -83,6 +137,7 @@ def setup_logging():
         "triggered": logging.INFO,
         "uvicorn": logging.INFO,
         "fastapi": logging.INFO,
+        "litellm": logging.ERROR,  # Always set LiteLLM to DEBUG
     }
 
     for logger_name, level in loggers.items():
@@ -93,4 +148,4 @@ def setup_logging():
     # Set initial log level from environment
     set_log_level(log_level)
 
-    return console 
+    return logger 

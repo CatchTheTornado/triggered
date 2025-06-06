@@ -17,7 +17,11 @@ from pydantic import BaseModel
 from .core import TriggerAction
 from .registry import get_trigger, get_action
 from .config_schema import get_trigger_config_schema, get_action_config_schema
-from .logging_config import setup_logging, LOGS_DIR, set_log_level
+from .logging_config import (
+    setup_logging, LOGS_DIR, set_log_level, 
+    log_trigger_check, log_action_start, log_action_result,
+    log_telemetry, log_result_details
+)
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +29,7 @@ from .logging_config import setup_logging, LOGS_DIR, set_log_level
 # ---------------------------------------------------------------------------
 
 app = typer.Typer(help="Triggered CLI")
-console = setup_logging()
+logger = setup_logging()
 
 TRIGGER_DIR = Path("triggers")
 TRIGGER_DIR.mkdir(exist_ok=True)
@@ -107,7 +111,7 @@ def interactive_config_from_schema(schema, title: str) -> Dict[str, Any]:
     """Interactive prompt for configuration based on schema."""
     config = {}
     
-    console.print(Panel(title, style="bold blue"))
+    logger.info(Panel(title, style="bold blue"))
     
     for field in schema.fields:
         if field.type == "string":
@@ -148,7 +152,7 @@ def print_app_title():
     """Print the application title with Rich formatting."""
     title = Text("Triggered", style="bold blue")
     subtitle = Text("AI-powered triggers and actions", style="italic cyan")
-    console.print(Panel(
+    logger.info(Panel(
         Text.assemble(title, "\n", subtitle),
         border_style="blue",
         padding=(1, 2)
@@ -173,7 +177,7 @@ def add_trigger(
     
     # Interactive mode if no arguments provided
     if not any([trigger_type, action_type, trigger_config_path, action_config_path]):
-        console.print(Panel("Interactive Trigger Creation", style="bold yellow"))
+        logger.info(Panel("Interactive Trigger Creation", style="bold yellow"))
         
         # Select trigger type
         trigger_types = get_available_trigger_types()
@@ -182,7 +186,7 @@ def add_trigger(
         trigger_table.add_column("Description", style="green")
         for t in trigger_types:
             trigger_table.add_row(t, f"{t.capitalize()} trigger")
-        console.print(trigger_table)
+        logger.info(trigger_table)
         
         trigger_type = Prompt.ask(
             "Select trigger type",
@@ -197,7 +201,7 @@ def add_trigger(
         action_table.add_column("Description", style="green")
         for t in action_types:
             action_table.add_row(t, f"{t.capitalize()} action")
-        console.print(action_table)
+        logger.info(action_table)
         
         action_type = Prompt.ask(
             "Select action type",
@@ -220,7 +224,7 @@ def add_trigger(
     else:
         # Non-interactive mode
         if not all([trigger_type, action_type, trigger_config_path, action_config_path]):
-            console.print("[red]Error: All arguments are required in non-interactive mode[/red]")
+            logger.error("Error: All arguments are required in non-interactive mode")
             return
             
         trigger_config = json.loads(trigger_config_path.read_text())
@@ -237,7 +241,7 @@ def add_trigger(
     file_path.write_text(
         json.dumps(ta.dict(), indent=2),
     )
-    console.print(
+    logger.info(
         Panel(
             f"[bold green]Created trigger file:[/bold green] {file_path}\n"
             f"Auth key: {ta.auth_key}",
@@ -272,8 +276,8 @@ def start(
     server_info.add_row("Logs directory", str(LOGS_DIR))
     server_info.add_row("Log level", log_level or os.getenv("TRIGGERED_LOG_LEVEL", "INFO"))
     
-    console.print(server_info)
-    console.print("\n[bold blue]Starting server...[/bold blue]")
+    logger.info(server_info)
+    logger.info("\n[bold blue]Starting server...[/bold blue]")
     
     uvicorn.run("triggered.server:app", host=host, port=port, reload=reload)
 
@@ -292,12 +296,12 @@ def ls(
     print_app_title()
     
     if not TRIGGER_DIR.exists():
-        console.print("[yellow]No triggers directory found.[/yellow]")
+        logger.warning("No triggers directory found.")
         return
 
     triggers = list(TRIGGER_DIR.glob("*.json"))
     if not triggers:
-        console.print("[yellow]No triggers found.[/yellow]")
+        logger.warning("No triggers found.")
         return
 
     trigger_table = Table(title="Available Triggers", show_header=True, header_style="bold magenta")
@@ -313,7 +317,7 @@ def ls(
             data["action_type"]
         )
     
-    console.print(trigger_table)
+    logger.info(trigger_table)
 
 
 # ---------------------------------------------------------------------------
@@ -349,10 +353,10 @@ def run_trigger_once(
         path_obj = TRIGGER_DIR / path_obj
 
     if not path_obj.exists():
-        console.print(f"[red]Error: Trigger file not found: {path_obj}[/red]")
+        logger.error(f"Error: Trigger file not found: {path_obj}")
         return
 
-    console.print(f"[bold blue]Running trigger:[/bold blue] {path_obj}")
+    logger.info(f"[bold blue]Running trigger:[/bold blue] {path_obj}")
     asyncio.run(_execute_ta_once(path_obj))
 
 
@@ -363,7 +367,6 @@ def run_trigger_once(
 
 async def _execute_ta_once(ta_path: Path):
     """Load a TriggerAction JSON file and execute once synchronously."""
-
     from .registry import get_trigger, get_action
     from .core import TriggerAction
 
@@ -381,22 +384,28 @@ async def _execute_ta_once(ta_path: Path):
         ctx = await trigger.check()
     
     if ctx is None:
-        console.print("[yellow]Trigger not fired[/yellow]")
+        log_trigger_check(ta.trigger_config.get("name", "Unknown"), False, "Trigger not fired")
         return
 
-    if not ctx.data.get("trigger", False):
-        reason = ctx.data.get("reason", "No reason provided")
-        console.print(f"[yellow]Trigger skipped – {reason}[/yellow]")
-        console.print(f"[telemetry]LLM raw: {ctx.data.get('raw', '')}[/telemetry]")
-        return
-
-    console.print(f"[success]Reason: {ctx.data.get('reason', '')}[/success]")
-    console.print(f"[telemetry]LLM raw: {ctx.data.get('raw', '')}[/telemetry]")
+    triggered = ctx.data.get("trigger", False)
+    reason = ctx.data.get("reason", "No reason provided")
+    log_trigger_check(ta.trigger_config.get("name", "Unknown"), triggered, reason)
     
-    result = await action.execute(ctx)
-    if result:
-        console.print("[bold blue]Result:[/bold blue]")
-        console.print(Syntax(json.dumps(result, indent=2), "json", theme="monokai"))
+    if not triggered:
+        log_telemetry(f"LLM raw: {ctx.data.get('raw', '')}")
+        return
+
+    log_telemetry(f"LLM raw: {ctx.data.get('raw', '')}")
+    
+    action_name = ta.action_config.get("name", "Unknown")
+    log_action_start(action_name)
+    try:
+        result = await action.execute(ctx)
+        log_action_result(action_name, result)
+        log_result_details(result)
+    except Exception as e:
+        log_action_result(action_name, error=str(e))
+        raise
 
 
 if __name__ == "__main__":  # pragma: no cover
