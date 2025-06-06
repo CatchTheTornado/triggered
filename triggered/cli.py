@@ -76,6 +76,88 @@ def get_available_action_types() -> list[str]:
     from .registry import ACTION_REGISTRY
     return list(ACTION_REGISTRY.keys())
 
+def display_loaded_actions():
+    """Display and log loaded actions in a nice table format."""
+    from .registry import ACTION_REGISTRY, TRIGGER_REGISTRY
+    
+    # Create table for actions
+    action_table = Table(title="Loaded Actions", show_header=True, header_style="bold magenta")
+    action_table.add_column("Type", style="cyan")
+    action_table.add_column("Description", style="green")
+    
+    # Create table for triggers
+    trigger_table = Table(title="Loaded Triggers", show_header=True, header_style="bold magenta")
+    trigger_table.add_column("Type", style="cyan")
+    trigger_table.add_column("Description", style="green")
+    
+    # Add actions to table
+    for action_type in sorted(ACTION_REGISTRY.keys()):
+        action_cls = ACTION_REGISTRY[action_type]
+        description = action_cls.__doc__ or f"{action_type.capitalize()} action"
+        action_table.add_row(action_type, description)
+    
+    # Add triggers to table
+    for trigger_type in sorted(TRIGGER_REGISTRY.keys()):
+        trigger_cls = TRIGGER_REGISTRY[trigger_type]
+        description = trigger_cls.__doc__ or f"{trigger_type.capitalize()} trigger"
+        trigger_table.add_row(trigger_type, description)
+    
+    # Display tables
+    console.print(action_table)
+    console.print(trigger_table)
+    
+    # Log as simple list
+    logger.info("Loaded actions: " + ", ".join(sorted(ACTION_REGISTRY.keys())))
+    logger.info("Loaded triggers: " + ", ".join(sorted(TRIGGER_REGISTRY.keys())))
+
+def get_available_trigger_files():
+    """Get list of available trigger-action JSON files."""
+    return list(TRIGGER_DIR.glob("*.json"))
+
+def display_loaded_trigger_files():
+    """Display and log loaded trigger-action JSON files in a table format."""
+    if not TRIGGER_DIR.exists():
+        console.print("[yellow]No triggers directory found.[/yellow]")
+        logger.info("No triggers directory found")
+        return
+
+    triggers = list(TRIGGER_DIR.glob("*.json"))
+    if not triggers:
+        console.print("[yellow]No trigger files found.[/yellow]")
+        logger.info("No trigger files found")
+        return
+
+    # Create table for trigger files
+    trigger_files_table = Table(title="Loaded Trigger Files", show_header=True, header_style="bold magenta")
+    trigger_files_table.add_column("File", style="cyan")
+    trigger_files_table.add_column("Trigger Type", style="green")
+    trigger_files_table.add_column("Action Type", style="blue")
+    trigger_files_table.add_column("Name", style="yellow")
+    
+    # Add trigger files to table
+    for trigger in sorted(triggers):
+        try:
+            data = json.loads(trigger.read_text())
+            trigger_files_table.add_row(
+                trigger.name,
+                data.get("trigger_type", "Unknown"),
+                data.get("action_type", "Unknown"),
+                data.get("trigger_config", {}).get("name", "Unnamed")
+            )
+        except Exception as e:
+            trigger_files_table.add_row(
+                trigger.name,
+                "[red]Error[/red]",
+                "[red]Error[/red]",
+                f"[red]Failed to load: {str(e)}[/red]"
+            )
+    
+    # Display table
+    console.print(trigger_files_table)
+    
+    # Log as simple list
+    logger.info("Loaded trigger files: " + ", ".join(t.name for t in sorted(triggers)))
+
 def get_trigger_schema(trigger_type: str) -> Dict[str, Any]:
     """Get schema for trigger type."""
     trigger_cls = get_trigger(trigger_type)
@@ -157,6 +239,8 @@ def print_app_title():
         border_style="blue",
         padding=(1, 2)
     ))
+    display_loaded_actions()
+    display_loaded_trigger_files()
 
 @app.command("add")
 def add_trigger(
