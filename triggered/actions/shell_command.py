@@ -31,14 +31,13 @@ class ShellCommandAction(Action):
 
     async def execute(self, ctx: TriggerContext) -> dict:  # noqa: D401
         command: str = self.config["command"].format(**ctx.data)
-        logger.info("Executing shell command: %s", command)
+        logger.debug("Executing shell command: %s", command)
         proc = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate()
-        logger.info("Shell stdout: %s", stdout.decode())
         if stderr:
             logger.error("Shell stderr: %s", stderr.decode())
         return {

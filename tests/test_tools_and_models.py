@@ -3,8 +3,6 @@ import os
 from unittest.mock import patch, MagicMock
 
 from triggered.tools import (
-    Tool,
-    ToolInput,
     RandomNumberTool,
     get_tools
 )

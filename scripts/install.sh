@@ -35,10 +35,10 @@ if [ "${NO_REDIS:-0}" != "1" ]; then
   fi
   echo "[+] Starting Redis in background…"
   redis-server --daemonize yes
-  export BROKER_URL="redis://localhost:6379/0"
+  export TRIGGERED_BROKER_URL="redis://localhost:6379/0"
 else
   echo "[=] Using in-process memory broker (NO_REDIS=1)"
-  export BROKER_URL="memory://"
+  export TRIGGERED_BROKER_URL="memory://"
 fi
 
 # 5. Launch Triggered services ---------------------------------------------

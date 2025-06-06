@@ -1,7 +1,7 @@
 import psutil
 from typing import Dict, Any
 
-from ..tools import Tool
+from ..triggered.tools import Tool
 
 class ProcessCheckerTool(Tool):
     """Tool for checking if a specific process is running."""

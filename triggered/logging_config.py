@@ -48,28 +48,20 @@ def log_result_details(result: Any):
 def log_action_result(action_name: str, result: Any = None, error: str = None):
     """Log a formatted action result message."""
     if error:
-        # Display error in console with Rich formatting
-        console.print(f"[red]Action {action_name} ❌ Failed: {error}[/red]")
         # Log to file
         logger.error(f"Action {action_name} ❌ Failed: {error}")
     else:
-        # Display success in console with Rich formatting
-        console.print(f"[green]Action {action_name} ✓ Completed: {result}[/green]")
         # Log to file
         logger.info(f"Action {action_name} ✓ Completed: {result}")
 
 def log_trigger_check(trigger_name: str, triggered: bool, reason: str = None):
     """Log a formatted trigger check result."""
     status = "✓ TRIGGERED" if triggered else "✗ SKIPPED"
-    # Display in console with Rich formatting
-    console.print(f"[cyan]Trigger {trigger_name} {status}: {reason}[/cyan]")
     # Log to file
     logger.info(f"Trigger {trigger_name} {status}: {reason}")
 
 def log_action_start(action_name: str):
     """Log a formatted action start message."""
-    # Display in console with Rich formatting
-    console.print(f"[green]Action {action_name} 🚀 Starting[/green]")
     # Log to file
     logger.info(f"Action {action_name} 🚀 Starting")
 

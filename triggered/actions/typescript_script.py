@@ -27,7 +27,7 @@ class TypeScriptScriptAction(Action):
 
     async def execute(self, ctx: TriggerContext) -> None:  # noqa: D401
         script_path = Path(self.config["path"]).expanduser().resolve()
-        logger.info("Executing TypeScript script in Docker: %s", script_path)
+        logger.debug("Executing TypeScript script in Docker: %s", script_path)
         # Build docker command (assumes docker is installed and daemon running)
         docker_cmd = (
             "docker run --rm "

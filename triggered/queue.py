@@ -9,12 +9,12 @@ from .registry import get_action
 
 logger = logging.getLogger(__name__)
 
-# Allow opting out of external message broker.  If the env var BROKER_URL is
+# Allow opting out of external message broker.  If the env var TRIGGERED_BROKER_URL is
 # unset, fall back to the in-process ``memory://`` broker so Redis is optional.
 
-broker_url = os.getenv("BROKER_URL", "memory://")
+broker_url = os.getenv("TRIGGERED_BROKER_URL", "memory://")
 # For small local installs the RPC backend works without extra services.
-backend_url = os.getenv("BACKEND_URL", "rpc://")
+backend_url = os.getenv("TRIGGERED_BACKEND_URL", "rpc://")
 
 app = Celery(
     "triggered",

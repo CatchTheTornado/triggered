@@ -31,8 +31,11 @@ from .logging_config import (
 app = typer.Typer(help="Triggered CLI")
 logger = setup_logging()
 
-TRIGGER_DIR = Path("triggers")
-TRIGGER_DIR.mkdir(exist_ok=True)
+EXAMPLES_DIR = Path(os.getenv("TRIGGERED_EXAMPLES_PATH", "examples"))
+EXAMPLES_DIR.mkdir(exist_ok=True)
+
+ENTRIES_DIR = Path(os.getenv("TRIGGERED_ENTRIES_PATH", "entries"))
+ENTRIES_DIR.mkdir(exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -110,42 +113,42 @@ def display_loaded_actions():
     logger.info("Loaded actions: " + ", ".join(sorted(ACTION_REGISTRY.keys())))
     logger.info("Loaded triggers: " + ", ".join(sorted(TRIGGER_REGISTRY.keys())))
 
-def get_available_trigger_files():
+def get_available_entries():
     """Get list of available trigger-action JSON files."""
-    return list(TRIGGER_DIR.glob("*.json"))
+    return list(ENTRIES_DIR.glob("*.json")) + list(EXAMPLES_DIR.glob("*.json"))
 
-def display_loaded_trigger_files():
+def display_loaded_entries():
     """Display and log loaded trigger-action JSON files in a table format."""
-    if not TRIGGER_DIR.exists():
+    if not ENTRIES_DIR.exists():
         console.print("[yellow]No triggers directory found.[/yellow]")
         logger.info("No triggers directory found")
         return
 
-    triggers = list(TRIGGER_DIR.glob("*.json"))
+    triggers = get_available_entries()
     if not triggers:
         console.print("[yellow]No trigger files found.[/yellow]")
         logger.info("No trigger files found")
         return
 
     # Create table for trigger files
-    trigger_files_table = Table(title="Loaded Trigger Files", show_header=True, header_style="bold magenta")
-    trigger_files_table.add_column("File", style="cyan")
-    trigger_files_table.add_column("Trigger Type", style="green")
-    trigger_files_table.add_column("Action Type", style="blue")
-    trigger_files_table.add_column("Name", style="yellow")
+    entries_table = Table(title="Available Trigger-Action Entries", show_header=True, header_style="bold magenta")
+    entries_table.add_column("File", style="cyan")
+    entries_table.add_column("Trigger Type", style="green")
+    entries_table.add_column("Action Type", style="blue")
+    entries_table.add_column("Name", style="yellow")
     
     # Add trigger files to table
     for trigger in sorted(triggers):
         try:
             data = json.loads(trigger.read_text())
-            trigger_files_table.add_row(
+            entries_table.add_row(
                 trigger.name,
                 data.get("trigger_type", "Unknown"),
                 data.get("action_type", "Unknown"),
                 data.get("trigger_config", {}).get("name", "Unnamed")
             )
         except Exception as e:
-            trigger_files_table.add_row(
+            entries_table.add_row(
                 trigger.name,
                 "[red]Error[/red]",
                 "[red]Error[/red]",
@@ -153,7 +156,7 @@ def display_loaded_trigger_files():
             )
     
     # Display table
-    console.print(trigger_files_table)
+    console.print(entries_table)
     
     # Log as simple list
     logger.info("Loaded trigger files: " + ", ".join(t.name for t in sorted(triggers)))
@@ -239,7 +242,7 @@ def print_app_title():
         border_style="blue",
         padding=(1, 2)
     ))
-    display_loaded_trigger_files()
+    display_loaded_entries()
 
 @app.command("add")
 def add_trigger(
@@ -320,7 +323,7 @@ def add_trigger(
         action_type=action_type,
         action_config=action_config,
     )
-    file_path = TRIGGER_DIR / f"{ta.id}.json"
+    file_path = ENTRIES_DIR / f"{ta.id}.json"
     file_path.write_text(
         json.dumps(ta.dict(), indent=2),
     )
@@ -378,11 +381,11 @@ def ls(
     """List all available triggers in the triggers directory."""
     print_app_title()
     
-    if not TRIGGER_DIR.exists():
+    if not ENTRIES_DIR.exists():
         console.print("[yellow]No triggers directory found.[/yellow]")
         return
 
-    triggers = list(TRIGGER_DIR.glob("*.json"))
+    triggers = list(ENTRIES_DIR.glob("*.json"))
     if not triggers:
         console.print("[yellow]No triggers found.[/yellow]")
         return
@@ -421,26 +424,31 @@ def run_trigger_once(
 ):
     """Execute a trigger-action JSON definition one time.
 
-    The path can be either absolute or relative to the triggers directory.
+    The path can be either absolute or relative to the entries directory.
     Example:
-        triggered run triggers/ai-ps.json
+        triggered run entries/ai-ps.json
         triggered run ai-ps.json
     """
     print_app_title()
     
     # Convert string path to Path object
     path_obj = Path(path)
+    dest_path = Path(path)
     
     # If path is relative and doesn't start with 'triggers/', look in triggers directory
-    if not path_obj.is_absolute() and not str(path_obj).startswith('triggers/'):
-        path_obj = TRIGGER_DIR / path_obj
+    if not path_obj.is_absolute() and not str(path_obj).startswith('entries/'):
+        dest_path = ENTRIES_DIR / path_obj
 
-    if not path_obj.exists():
-        console.print(f"[red]Error: Trigger file not found: {path_obj}[/red]")
-        return
+    if not dest_path.exists():
+        if not path_obj.is_absolute() and not str(path_obj).startswith('examples/'):
+            dest_path = EXAMPLES_DIR / path_obj
 
-    console.print(f"[bold blue]Running trigger:[/bold blue] {path_obj}")
-    asyncio.run(_execute_ta_once(path_obj))
+        if not dest_path.exists():
+            console.print(f"[red]Error: Trigger-action entry not found: {dest_path}[/red]")
+            return
+
+    console.print(f"[bold blue]Running trigger:[/bold blue] {dest_path}")
+    asyncio.run(_execute_ta_once(dest_path))
 
 
 # ---------------------------------------------------------------------------
@@ -473,14 +481,8 @@ async def _execute_ta_once(ta_path: Path):
     triggered = ctx.data.get("trigger", False)
     reason = ctx.data.get("reason", "No reason provided")
     log_trigger_check(ta.trigger_config.get("name", "Unknown"), triggered, reason)
-    
-    if not triggered:
-        log_telemetry(f"LLM raw: {ctx.data.get('raw', '')}")
-        return
-
-    log_telemetry(f"LLM raw: {ctx.data.get('raw', '')}")
-    
-    action_name = ta.action_config.get("name", "Unknown")
+        
+    action_name = ta.action_config.get("name", ta.action_type)
     log_action_start(action_name)
     try:
         result = await action.execute(ctx)
@@ -504,7 +506,7 @@ def check_components(
     """Display available triggers, actions, and their configurations."""
     print_app_title()
     display_loaded_actions()
-    display_loaded_trigger_files()
+    display_loaded_entries()
 
 
 if __name__ == "__main__":  # pragma: no cover

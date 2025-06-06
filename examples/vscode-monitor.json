@@ -4,6 +4,7 @@
     "name": "vscode-monitor",
     "prompt": "Check if Visual Studio Code is running. If it is running, trigger the action. If not, don't trigger.",
     "interval": 30,
+    "custom_tools_path": "./examples/process_checker.py",
     "tools": ["process_checker"]
   },
   "action_type": "shell",
