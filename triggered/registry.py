@@ -1,38 +1,44 @@
-from typing import Dict, Type, Callable
+from typing import Dict, Type, Callable, Any
 
 from .core import Trigger, Action
+from .tools import Tool
 
 TRIGGER_REGISTRY: Dict[str, Type[Trigger]] = {}
 ACTION_REGISTRY: Dict[str, Type[Action]] = {}
+TOOL_REGISTRY: Dict[str, Type[Tool]] = {}
 
 
-def register_trigger(name: str) -> Callable[[Type[Trigger]], Type[Trigger]]:
-    """Decorator to register a Trigger subclass under a given name."""
-
-    def decorator(cls: Type[Trigger]) -> Type[Trigger]:
-        TRIGGER_REGISTRY[name] = cls
-        return cls
-
-    return decorator
+def register_trigger(name: str, trigger_cls: Type[Trigger]) -> None:
+    """Register a trigger class."""
+    TRIGGER_REGISTRY[name] = trigger_cls
 
 
-def register_action(name: str) -> Callable[[Type[Action]], Type[Action]]:
-    """Decorator to register an Action subclass under a given name."""
+def register_action(name: str, action_cls: Type[Action]) -> None:
+    """Register an action class."""
+    ACTION_REGISTRY[name] = action_cls
 
-    def decorator(cls: Type[Action]) -> Type[Action]:
-        ACTION_REGISTRY[name] = cls
-        return cls
 
-    return decorator
+def register_tool(name: str, tool_cls: Type[Tool]) -> None:
+    """Register a tool class."""
+    TOOL_REGISTRY[name] = tool_cls
 
 
 def get_trigger(name: str) -> Type[Trigger]:
+    """Get a trigger class by name."""
     if name not in TRIGGER_REGISTRY:
-        raise KeyError(f"Trigger '{name}' not found in registry")
+        raise ValueError(f"Unknown trigger type: {name}")
     return TRIGGER_REGISTRY[name]
 
 
 def get_action(name: str) -> Type[Action]:
+    """Get an action class by name."""
     if name not in ACTION_REGISTRY:
-        raise KeyError(f"Action '{name}' not found in registry")
-    return ACTION_REGISTRY[name] 
+        raise ValueError(f"Unknown action type: {name}")
+    return ACTION_REGISTRY[name]
+
+
+def get_tool(name: str) -> Type[Tool]:
+    """Get a tool class by name."""
+    if name not in TOOL_REGISTRY:
+        raise ValueError(f"Unknown tool type: {name}")
+    return TOOL_REGISTRY[name] 
