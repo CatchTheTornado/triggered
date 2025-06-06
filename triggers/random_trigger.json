@@ -2,7 +2,8 @@
     "trigger_type": "ai",
     "trigger_config": {
         "name": "random_number_trigger",
-        "model": "local",
+        "model": "ollama/llama3.1",
+        "api_base": "http://localhost:11434",
         "interval": 60,
         "prompt": "Generate a random number between 1 and 10. Make the decision based on the number - if >=5 then trigger otherwise don't trigger",
         "tools": [

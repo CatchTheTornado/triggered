@@ -2,7 +2,8 @@
     "trigger_type": "ai",
     "trigger_config": {
         "name": "cloudy_weather_trigger",
-        "model": "local",
+        "model": "ollama/llama3.1",
+        "api_base": "http://localhost:11434",
         "interval": 300,
         "prompt": "Check if it's cloudy in {{ city }}. Use the weather tool to get current conditions. If the weather is cloudy, trigger the action.",
         "prompt_vars": {

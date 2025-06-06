@@ -88,22 +88,25 @@ except Exception:
 _MODEL_CACHE: Dict[str, BaseModelAdapter] = {}
 
 
-def get_model(name: str = "local") -> BaseModelAdapter:
-    if name in _MODEL_CACHE:
-        return _MODEL_CACHE[name]
-
-    if name == "local":
-        try:
-            if _LITELLM_AVAILABLE:
-                model = LiteLLMModel()
-            else:
-                raise RuntimeError("No LLM backend available")
-        except Exception as exc:  # noqa: WPS420
-            logger.error("Local model init failed: %s; using Dummy", exc)
-            model = DummyModel()
-    else:
-        # For unknown models we return DummyModel; extend as needed.
-        model = DummyModel()
-
-    _MODEL_CACHE[name] = model
-    return model 
+def get_model(
+    model: str | None = None,
+    api_base: str | None = None,
+    **kwargs
+) -> LiteLLMModel:
+    """Get a configured LiteLLM model.
+    
+    Parameters
+    ----------
+    model : str | None
+        Model name (e.g. "ollama/llama3.1"). Defaults to LITELLM_MODEL env var or "ollama/llama3.1"
+    api_base : str | None
+        API base URL. Defaults to LITELLM_API_BASE env var or "http://localhost:11434"
+    **kwargs
+        Additional arguments to pass to LiteLLM
+        
+    Returns
+    -------
+    LiteLLMModel
+        Configured LiteLLM model instance
+    """
+    return LiteLLMModel(model=model, api_base=api_base, **kwargs) 

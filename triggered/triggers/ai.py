@@ -21,7 +21,7 @@ class AITrigger(Trigger):
 
     The config must include:
     - prompt: str
-    - model: str (optional, default "local")
+    - model: str (optional, default "ollama/llama3.1")
     - interval: int seconds between evaluations (default 60)
     - tools: list of tool configurations (optional)
     - custom_tools_path: str (optional) path to Python module with custom tools
@@ -29,9 +29,9 @@ class AITrigger(Trigger):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.model_name: str = config.get("model", "local")
+        self.model_name: str = config.get("model", "ollama/llama3.1")
         self.interval: int = int(config.get("interval", 60))
-        self.model = get_model(self.model_name)
+        self.model = get_model(model=self.model_name)
         self.tool_configs = config.get("tools", [])
         
         # Load custom tools if specified
