@@ -31,9 +31,9 @@ cd triggered
 poetry install
 ```
 
-4. Activate the Poetry shell:
+4. Activate the Poetry environment:
 ```bash
-poetry shell
+source $(poetry env info --path)/bin/activate
 ```
 
 ## Quick Start
@@ -69,8 +69,16 @@ ollama pull llama3.1
 
 3. Run the trigger:
 ```bash
-# Make sure you're in the Poetry shell
+# Make sure you're in the Poetry environment
 poetry run python -m triggered.cli run-trigger triggers/my_trigger.json
+```
+
+or run one of the examples provided:
+
+
+```bash
+# Make sure you're in the Poetry environment
+poetry run python -m triggered.cli run-trigger triggers/random_trigger.json
 ```
 
 ## Configuration
@@ -168,9 +176,9 @@ export LITELLM_API_BASE="http://localhost:11434"  # Default API base
 
 ## Development
 
-1. Make sure you're in the Poetry shell:
+1. Make sure you're in the Poetry environment:
 ```bash
-poetry shell
+source $(poetry env info --path)/bin/activate
 ```
 
 2. Run tests:
