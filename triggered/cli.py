@@ -239,7 +239,6 @@ def print_app_title():
         border_style="blue",
         padding=(1, 2)
     ))
-    display_loaded_actions()
     display_loaded_trigger_files()
 
 @app.command("add")
@@ -490,6 +489,22 @@ async def _execute_ta_once(ta_path: Path):
     except Exception as e:
         log_action_result(action_name, error=str(e))
         raise
+
+
+@app.command("check")
+def check_components(
+    log_level: str = typer.Option(
+        None,
+        "--log-level",
+        "-l",
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        callback=log_level_callback,
+    ),
+):
+    """Display available triggers, actions, and their configurations."""
+    print_app_title()
+    display_loaded_actions()
+    display_loaded_trigger_files()
 
 
 if __name__ == "__main__":  # pragma: no cover

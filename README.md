@@ -1,214 +1,157 @@
 # Triggered
 
-Triggered is a Python library for creating and managing AI-powered triggers and actions. It uses LiteLLM to interact with various LLM providers, with Ollama as the default model.
+A Python library for creating and managing AI-powered triggers and actions.
 
 ## Features
 
-- AI-powered triggers that can make decisions based on prompts and tools
-- Support for various LLM providers through LiteLLM
-- Built-in tools for common tasks (random numbers, etc.)
-- Custom tool support
-- Shell command actions
-- Cron-style scheduling
-- Folder monitoring
-- Webhook monitoring
+- AI-powered triggers that can monitor and react to various conditions
+- Flexible action system for executing tasks when triggers fire
 - FastAPI server for managing triggers and handling webhooks
-- Rich CLI interface with interactive configuration
-- Configurable logging with both console and file output
+- Rich CLI interface with interactive trigger creation
+- Comprehensive logging system with both console and file output
+- Support for various trigger types (e.g., AI-based, webhook-based)
+- Support for various action types (e.g., shell commands, TypeScript scripts)
 
 ## Development Setup
 
-1. Install Poetry (if not already installed):
+1. Clone the repository:
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
-```
-
-2. Clone the repository:
-```bash
-git clone https://github.com/CatchTheTornado/triggered.git
+git clone https://github.com/yourusername/triggered.git
 cd triggered
 ```
 
-3. Install dependencies using Poetry:
+2. Create and activate a virtual environment:
 ```bash
-poetry install
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-4. Activate the Poetry environment:
+3. Install development dependencies:
 ```bash
-source $(poetry env info --path)/bin/activate
+pip install -e ".[dev]"
 ```
 
-5. Install the package in development mode:
+4. Install pre-commit hooks:
 ```bash
-poetry install
+pre-commit install
 ```
-
-This will make the `triggered` command available in your shell.
 
 ## Quick Start
 
-1. Install Ollama and pull the llama3.1 model:
+1. Create a trigger-action definition:
 ```bash
-# Install Ollama from https://ollama.ai
-ollama pull llama3.1
-```
-
-2. Create a trigger configuration file using the interactive CLI:
-```bash
-# Start interactive trigger creation
 triggered add
-
-# Or create from JSON configs
-triggered add --trigger-type ai --action-type shell --trigger-config-path trigger.json --action-config-path action.json
 ```
+This will start an interactive prompt to create a new trigger-action configuration.
 
-The interactive mode will guide you through:
-- Selecting trigger type (AI, Cron, Webhook, Folder)
-- Selecting action type (Shell, Webhook Call, AI Agent, Python Script, TypeScript Script)
-- Configuring trigger-specific settings
-- Configuring action-specific settings
+2. Or create a trigger-action from JSON configs:
+```bash
+triggered add --trigger-type ai --action-type shell-command --trigger-config trigger.json --action-config action.json
+```
 
 3. List available triggers:
 ```bash
 triggered ls
 ```
 
-4. Run the trigger:
+4. Check available components and loaded triggers:
 ```bash
-# Using full path
-triggered run triggers/my_trigger.json
+triggered check
+```
+This command displays:
+- Available trigger types and their descriptions
+- Available action types and their descriptions
+- Currently loaded trigger-action JSON files
 
-# Or using just the filename (it will look in the triggers directory)
-triggered run my_trigger.json
+5. Start the server:
+```bash
+triggered start
+```
+This will start the FastAPI server with default settings (host: 0.0.0.0, port: 8000).
+
+You can customize the server settings:
+```bash
+triggered start --host localhost --port 3000
 ```
 
-5. Start the server (for webhook triggers and trigger management):
+Enable auto-reload during development:
 ```bash
-# Start with default settings (host: 0.0.0.0, port: 8000)
-triggered start
-
-# Or customize host and port
-triggered start --host localhost --port 3000
-
-# Enable auto-reload during development
 triggered start --reload
+```
+
+6. Run a trigger once:
+```bash
+triggered run triggers/your-trigger.json
 ```
 
 ## Configuration
 
-### AI Trigger
-
-The AI trigger uses LiteLLM to interact with LLM providers. By default, it uses Ollama with the llama3.1 model.
-
-```json
-{
-    "trigger_type": "ai",
-    "trigger_config": {
-        "name": "my_trigger",
-        "model": "ollama/llama3.1",  // Default model
-        "api_base": "http://localhost:11434",  // Default API base
-        "interval": 60,  // Check every 60 seconds
-        "prompt": "Your prompt here",
-        "tools": [
-            {
-                "type": "random_number"
-            }
-        ],
-        "custom_tools_path": "path/to/custom_tools.py"  // Optional
-    }
-}
-```
-
 ### Environment Variables
 
-You can configure the model and API base using environment variables:
+- `TRIGGERED_LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `TRIGGERED_LOGS_PATH`: Set the path for log files (default: "logs")
 
-```bash
-export LITELLM_MODEL="ollama/llama3.1"  # Default model
-export LITELLM_API_BASE="http://localhost:11434"  # Default API base
-```
+### Logging
+
+The application uses a comprehensive logging system:
+- Console output with Rich formatting and colors
+- File logging in the `logs` directory (one file per day)
+- Different log levels for different components
+- Detailed logging of trigger checks and action executions
 
 ### Available Tools
 
-- `random_number`: Generate random numbers
-- Custom tools can be added by creating a Python module
+#### Triggers
 
-### Logging Configuration
+- `ai`: AI-based trigger that uses language models to evaluate conditions
+- `webhook`: Webhook-based trigger that fires on HTTP requests
 
-The application provides flexible logging configuration:
+#### Actions
 
-1. Console Output:
-   - Default level: INFO
-   - Rich formatting with colors
-   - Shows time, level, and message
-   - Supports tracebacks for errors
-
-2. File Output:
-   - Default level: DEBUG (captures all messages)
-   - Daily rotating log files
-   - Full details including timestamps and module names
-   - Stored in the configured logs directory
-
-3. Setting Log Level:
-   - Via environment variable:
-     ```bash
-     export TRIGGERED_LOG_LEVEL=DEBUG
-     ```
-   - Via CLI option:
-     ```bash
-     triggered start --log-level DEBUG
-     triggered run my-trigger.json --log-level DEBUG
-     ```
-
-4. Log Files:
-   - Location: `logs/YYYY-MM-DD.log`
-   - Format: `timestamp - module - level - message`
-   - Contains all log messages regardless of console level
-
-## Examples
-
-### Random Number Trigger
-
-```json
-{
-    "trigger_type": "ai",
-    "trigger_config": {
-        "name": "random_number_trigger",
-        "model": "ollama/llama3.1",
-        "api_base": "http://localhost:11434",
-        "interval": 60,
-        "prompt": "Generate a random number between 1 and 10. Make the decision based on the number - if >=5 then trigger otherwise don't trigger",
-        "tools": [
-            {
-                "type": "random_number"
-            }
-        ]
-    },
-    "action_type": "shell",
-    "action_config": {
-        "command": "echo 'Got a high number!'"
-    }
-}
-```
+- `shell-command`: Execute shell commands
+- `typescript-script`: Run TypeScript scripts
 
 ## Development
 
-1. Make sure you're in the Poetry environment:
-```bash
-source $(poetry env info --path)/bin/activate
+### Project Structure
+
+```
+triggered/
+├── actions/          # Action implementations
+├── triggers/         # Trigger implementations
+├── core.py          # Core trigger-action logic
+├── registry.py      # Component registry
+├── server.py        # FastAPI server
+├── cli.py           # CLI interface
+└── logging_config.py # Logging configuration
 ```
 
-2. Run tests:
+### Adding New Components
+
+1. Create a new trigger or action class in the appropriate directory
+2. Implement the required methods
+3. Register the component in `registry.py`
+
+### Testing
+
+Run tests with pytest:
 ```bash
-poetry run pytest
+pytest
 ```
 
-3. Run a trigger:
+### Code Style
+
+The project uses:
+- Black for code formatting
+- isort for import sorting
+- flake8 for linting
+- mypy for type checking
+
+Run all checks:
 ```bash
-triggered run triggers/random_trigger.json
+pre-commit run --all-files
 ```
 
 ## License
 
-MIT 
+MIT License 

@@ -1,4 +1,0 @@
-2025-06-06 14:40:57,372 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
-2025-06-06 14:40:57,397 - kombu.connection - WARNING - No hostname was supplied. Reverting to default 'localhost'
-2025-06-06 14:42:08,692 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
-2025-06-06 14:42:08,710 - kombu.connection - WARNING - No hostname was supplied. Reverting to default 'localhost'
