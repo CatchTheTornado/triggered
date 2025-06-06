@@ -6,7 +6,7 @@ Triggered is a Python library for creating and managing AI-powered triggers and 
 
 - AI-powered triggers that can make decisions based on prompts and tools
 - Support for various LLM providers through LiteLLM
-- Built-in tools for common tasks (weather, random numbers, etc.)
+- Built-in tools for common tasks (random numbers, etc.)
 - Custom tool support
 - Shell command actions
 - Cron-style scheduling
@@ -56,7 +56,7 @@ ollama pull llama3.1
         "prompt": "Your prompt here",
         "tools": [
             {
-                "type": "weather"
+                "type": "random_number"
             }
         ]
     },
@@ -71,14 +71,6 @@ ollama pull llama3.1
 ```bash
 # Make sure you're in the Poetry environment
 poetry run python -m triggered.cli run-trigger triggers/my_trigger.json
-```
-
-or run one of the examples provided:
-
-
-```bash
-# Make sure you're in the Poetry environment
-poetry run python -m triggered.cli run-trigger triggers/random_trigger.json
 ```
 
 ## Configuration
@@ -98,7 +90,7 @@ The AI trigger uses LiteLLM to interact with LLM providers. By default, it uses 
         "prompt": "Your prompt here",
         "tools": [
             {
-                "type": "weather"
+                "type": "random_number"
             }
         ],
         "custom_tools_path": "path/to/custom_tools.py"  // Optional
@@ -117,38 +109,10 @@ export LITELLM_API_BASE="http://localhost:11434"  # Default API base
 
 ### Available Tools
 
-- `weather`: Get current weather conditions
 - `random_number`: Generate random numbers
 - Custom tools can be added by creating a Python module
 
 ## Examples
-
-### Weather Trigger
-
-```json
-{
-    "trigger_type": "ai",
-    "trigger_config": {
-        "name": "cloudy_weather_trigger",
-        "model": "ollama/llama3.1",
-        "api_base": "http://localhost:11434",
-        "interval": 300,
-        "prompt": "Check if it's cloudy in {{ city }}. Use the weather tool to get current conditions. If the weather is cloudy, trigger the action.",
-        "prompt_vars": {
-            "city": "London"
-        },
-        "tools": [
-            {
-                "type": "weather"
-            }
-        ]
-    },
-    "action_type": "shell",
-    "action_config": {
-        "command": "echo 'It's cloudy in {{ city }}! Time to bring an umbrella.'"
-    }
-}
-```
 
 ### Random Number Trigger
 

@@ -50,6 +50,7 @@ class LiteLLMModel(BaseModelAdapter):
             response = await loop.run_in_executor(
                 None,
                 lambda: completion(
+                    tools=tools,
                     model=self.model,
                     messages=messages,
                     api_base=self.api_base,
