@@ -62,7 +62,7 @@ triggered add --trigger-type ai --action-type shell --trigger-config-path trigge
 
 The interactive mode will guide you through:
 - Selecting trigger type (AI, Cron, Webhook, Folder)
-- Selecting action type (Shell, HTTP, Notification)
+- Selecting action type (Shell, Webhook Call, AI Agent, Python Script, TypeScript Script)
 - Configuring trigger-specific settings
 - Configuring action-specific settings
 
