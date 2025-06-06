@@ -11,6 +11,18 @@ A Python library for creating and managing AI-powered triggers and actions.
 - Comprehensive logging system with both console and file output
 - Support for various trigger types (e.g., AI-based, webhook-based)
 - Support for various action types (e.g., shell commands, TypeScript scripts)
+- Auto-discovery of custom components
+- Pluggable architecture for easy extension
+
+## Environment Variables
+
+- `TRIGGERED_LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `TRIGGERED_LOGS_PATH`: Set the path for log files (default: "logs")
+- `TRIGGERED_TRIGGERS_PATH`: Set the path for trigger definitions (default: "triggers")
+- `TRIGGERED_COMPONENTS_PATH`: Set the path for custom components (default: "triggered/components")
+- `TRIGGERED_TRIGGERS_MODULE`: Set the Python module path for trigger implementations (default: "triggered/triggers")
+- `TRIGGERED_ACTIONS_MODULE`: Set the Python module path for action implementations (default: "triggered/actions")
+- `TRIGGERED_TOOLS_MODULE`: Set the Python module path for tool implementations (default: "triggered/tools")
 
 ## Development Setup
 
@@ -99,17 +111,259 @@ The application uses a comprehensive logging system:
 - Different log levels for different components
 - Detailed logging of trigger checks and action executions
 
-### Available Tools
+### Available Components
 
 #### Triggers
 
-- `ai`: AI-based trigger that uses language models to evaluate conditions
-- `webhook`: Webhook-based trigger that fires on HTTP requests
+1. AI Trigger (`ai`)
+   - Uses language models to evaluate conditions
+   - Configurable prompts and tools
+   - Supports various LLM providers through LiteLLM
+   - Example config:
+   ```json
+   {
+     "trigger_type": "ai",
+     "trigger_config": {
+       "name": "my_trigger",
+       "prompt": "Your condition here",
+       "interval": 60,
+       "tools": ["random_number"]
+     }
+   }
+   ```
+
+2. Webhook Trigger (`webhook`)
+   - Fires on HTTP requests
+   - Configurable endpoints and authentication
+   - Example config:
+   ```json
+   {
+     "trigger_type": "webhook",
+     "trigger_config": {
+       "name": "my_webhook",
+       "path": "/webhook",
+       "auth_key": "your-secret-key"
+     }
+   }
+   ```
+
+3. Folder Monitor Trigger (`folder-monitor`)
+   - Monitors a directory for file changes
+   - Supports file creation, modification, and deletion events
+   - Configurable file patterns and event types
+   - Example config:
+   ```json
+   {
+     "trigger_type": "folder-monitor",
+     "trigger_config": {
+       "name": "my_folder_monitor",
+       "path": "/path/to/watch",
+       "patterns": ["*.txt", "*.log"],
+       "events": ["created", "modified", "deleted"],
+       "recursive": true
+     }
+   }
+   ```
+
+4. Cron Trigger (`cron`)
+   - Schedule-based trigger using cron expressions
+   - Supports standard cron syntax
+   - Configurable timezone
+   - Example config:
+   ```json
+   {
+     "trigger_type": "cron",
+     "trigger_config": {
+       "name": "my_cron_trigger",
+       "schedule": "0 9 * * *",  # Run at 9 AM every day
+       "timezone": "UTC"
+     }
+   }
+   ```
 
 #### Actions
 
-- `shell-command`: Execute shell commands
-- `typescript-script`: Run TypeScript scripts
+1. Shell Command Action (`shell-command`)
+   - Executes shell commands
+   - Supports variable substitution
+   - Example config:
+   ```json
+   {
+     "action_type": "shell-command",
+     "action_config": {
+       "name": "my_command",
+       "command": "echo 'Hello, ${name}!'"
+     }
+   }
+   ```
+
+2. TypeScript Script Action (`typescript-script`)
+   - Runs TypeScript scripts
+   - Supports Node.js environment
+   - Example config:
+   ```json
+   {
+     "action_type": "typescript-script",
+     "action_config": {
+       "name": "my_script",
+       "path": "scripts/my-script.ts"
+     }
+   }
+   ```
+
+#### Tools
+
+1. Random Number Tool
+   - Generates random numbers
+   - Configurable range
+   - Example usage in AI trigger:
+   ```json
+   {
+     "type": "random_number",
+     "min": 1,
+     "max": 100
+   }
+   ```
+
+2. Custom Tools
+   - Can be added by creating a Python module
+   - Must implement the Tool interface
+   - Example implementation:
+   ```python
+   from triggered.tools import Tool
+
+   class MyCustomTool(Tool):
+       name = "my_tool"
+       description = "My custom tool description"
+
+       async def execute(self, **kwargs):
+           # Tool implementation
+           return result
+   ```
+
+### Creating Custom Components
+
+#### Auto-Discovery of Components
+
+The system automatically discovers and registers components from the following locations:
+- `triggered/triggers/` - Custom trigger implementations
+- `triggered/actions/` - Custom action implementations
+- `triggered/tools/` - Custom tool implementations
+
+You can override these paths using environment variables:
+```bash
+export TRIGGERED_TRIGGERS_MODULE="my_package.triggers"
+export TRIGGERED_ACTIONS_MODULE="my_package.actions"
+export TRIGGERED_TOOLS_MODULE="my_package.tools"
+```
+
+#### Adding a Custom Trigger
+
+1. Create a new file in your triggers directory:
+```python
+from triggered.core import Trigger
+
+class MyCustomTrigger(Trigger):
+    name = "my-custom"  # This will be the trigger type
+    description = "My custom trigger description"
+
+    def __init__(self, config: dict):
+        super().__init__(config)
+        # Initialize your trigger
+
+    async def check(self):
+        # Implement trigger logic
+        return TriggerContext(
+            data={
+                "trigger": True,  # or False
+                "reason": "Trigger reason"
+            }
+        )
+```
+
+2. The trigger will be automatically discovered and registered.
+
+#### Adding a Custom Action
+
+1. Create a new file in your actions directory:
+```python
+from triggered.core import Action
+
+class MyCustomAction(Action):
+    name = "my-custom"  # This will be the action type
+    description = "My custom action description"
+
+    def __init__(self, config: dict):
+        super().__init__(config)
+        # Initialize your action
+
+    async def execute(self, ctx):
+        # Implement action logic
+        return result
+```
+
+2. The action will be automatically discovered and registered.
+
+#### Adding a Custom Tool
+
+1. Create a new file in your tools directory:
+```python
+from triggered.tools import Tool
+
+class MyCustomTool(Tool):
+    name = "my_tool"
+    description = "My custom tool description"
+
+    async def execute(self, **kwargs):
+        # Tool implementation
+        return result
+```
+
+2. The tool will be automatically discovered and registered.
+
+#### Manual Registration
+
+If you prefer to register components manually or need more control, you can use the registration functions:
+
+```python
+from triggered.registry import register_trigger, register_action, register_tool
+
+# Register a trigger
+register_trigger("my-custom", MyCustomTrigger)
+
+# Register an action
+register_action("my-custom", MyCustomAction)
+
+# Register a tool
+register_tool("my-tool", MyCustomTool)
+```
+
+#### Component Structure
+
+Your custom components directory should follow this structure:
+```
+my_components/
+├── triggers/
+│   ├── __init__.py
+│   └── my_custom_trigger.py
+├── actions/
+│   ├── __init__.py
+│   └── my_custom_action.py
+└── tools/
+    ├── __init__.py
+    └── my_custom_tool.py
+```
+
+Each component should:
+1. Inherit from the appropriate base class
+2. Define a `name` and `description` class variable
+3. Implement the required methods
+4. Be placed in the correct directory
+
+The system will automatically:
+- Discover all components in the specified directories
+- Register them with appropriate names
+- Make them available in the CLI and API
 
 ## Development
 
