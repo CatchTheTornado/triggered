@@ -2,7 +2,6 @@ import logging
 
 from ..core import Action, TriggerContext
 from ..models import get_model
-from ..tools import get_litellm_tools
 from ..registry import register_action
 
 logger = logging.getLogger(__name__)
@@ -20,11 +19,8 @@ class AIAgentAction(Action):
         model = get_model(model_name)
         rendered_prompt = prompt.format(**ctx.data)
 
-        # Convert tools to LiteLLM format
-        litellm_tools = get_litellm_tools(tools)
-
-        # Call the model with tools
-        response = await model.ainvoke(rendered_prompt, tools=litellm_tools)
+        # Call the model with tools (conversion is now handled in the model)
+        response = await model.ainvoke(rendered_prompt, tools=tools)
         logger.info("AI Agent response: %s", response)
 
         # Store the result in the context for downstream actions

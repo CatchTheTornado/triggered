@@ -1,125 +1,58 @@
 import asyncio
-from typing import Dict, Any
-from jinja2 import Environment
 import json
-import os
-from pathlib import Path
 import logging
-import re
-
+from typing import Any, Dict, Optional
 from ..core import Trigger, TriggerContext
-from ..registry import register_trigger
 from ..models import get_model
-from ..tools import get_tools, get_litellm_tools, load_tools_from_module
+from ..tools import get_tools, load_tools_from_module
 
 logger = logging.getLogger(__name__)
 
 
-@register_trigger("ai")
 class AITrigger(Trigger):
-    """Trigger that uses an AI model to decide when to fire.
+    """Trigger that uses AI to make decisions."""
 
-    The config must include:
-    - prompt: str
-    - model: str (optional, default "ollama/llama3.1")
-    - interval: int seconds between evaluations (default 60)
-    - tools: list of tool configurations (optional)
-    - custom_tools_path: str (optional) path to Python module with custom tools
-    """
-
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
-        self.model_name: str = config.get("model", "ollama/llama3.1")
-        self.interval: int = int(config.get("interval", 60))
-        self.model = get_model(model=self.model_name)
-        self.tool_configs = config.get("tools", [])
+    def __init__(
+        self,
+        name: str,
+        model: str | None = None,
+        api_base: str | None = None,
+        interval: int = 60,
+        prompt: str = "",
+        tools: list[Dict[str, Any]] | None = None,
+        custom_tools_path: str | None = None,
+        **kwargs
+    ) -> None:
+        super().__init__(name)
+        self.model = get_model(model=model, api_base=api_base, **kwargs)
+        self.interval = interval
+        self.prompt = prompt
+        self.tools = get_tools(tools or [])
         
-        # Load custom tools if specified
-        custom_tools_path = config.get("custom_tools_path")
         if custom_tools_path:
-            try:
-                load_tools_from_module(custom_tools_path)
-            except Exception as e:
-                logger.error(f"Failed to load custom tools: {e}")
-                raise
+            load_tools_from_module(custom_tools_path)
 
-        # Template source and variables -----------------------------------
-        DEFAULT_TEMPLATE = (
-            "Your role is to decide whether to trigger an action based on the user prompt:  <user-prompt> {{ custom_prompt }} </user-prompt>\n\n"
-            "Respond ONLY with JSON in the following schema:\n\n"
-            "{ \"trigger\": <true|false>, "
-            "\"reason\": \"<short explanation why you made the decision>\" }"
-        )
-
-        self.template_source = config.get("template", DEFAULT_TEMPLATE)
-        self.prompt_vars = config.get("prompt_vars", {})
-
-    def _extract_json(self, text: str) -> str | None:
-        """Extract JSON from text, handling various formats."""
-        # Try to find JSON between triple backticks
-        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-        if match:
-            return match.group(1)
-
-        # Try to find JSON between curly braces
-        match = re.search(r"(\{.*\})", text, re.DOTALL)
-        if match:
-            return match.group(1)
-
-        return None
-
-    async def _evaluate(self):
-        # Render prompt with Jinja2
-        env = Environment()
-        env.globals.update(get_tools(self.tool_configs))
-        template = env.from_string(self.template_source)
-        prompt_vars = {**self.prompt_vars, **os.environ}
-        prompt = template.render(**prompt_vars)
-
-        # Convert tools to LiteLLM format
-        tools = get_litellm_tools(self.tool_configs)
-        
-        response = await self.model.ainvoke(prompt, tools=tools)
-
-        # Extract JSON from response
-        json_str = self._extract_json(response)
-        if not json_str:
-            logger.warning("No valid JSON found in response: %s", response)
-            return {
-                "trigger": False,
-                "reason": "no valid JSON found",
-                "raw": response,
-            }
-
+    async def check(self) -> Optional[TriggerContext]:
+        """Check if the trigger condition is met."""
         try:
-            obj = json.loads(json_str)
-            obj["raw"] = response
-            return obj  # includes raw
-        except json.JSONDecodeError as e:
-            logger.warning("Failed to parse JSON: %s", e)
-            return {
-                "trigger": False,
-                "reason": f"invalid JSON: {str(e)}",
-                "raw": response,
-            }
-
-    async def check(self):  # noqa: D401
-        """One-shot evaluation used by CLI run-trigger."""
-        obj = await self._evaluate()
-        if obj and obj.get("trigger"):
-            return TriggerContext(
-                trigger_name=self.name,
-                data=obj,
-            )
+            response = await self.model.ainvoke(self.prompt, tools=self.tools)
+            try:
+                obj = json.loads(response)
+                if obj and obj.get("trigger"):
+                    return TriggerContext(data=obj)
+            except json.JSONDecodeError:
+                logger.error("Failed to parse model response as JSON: %s", response)
+        except Exception as e:
+            logger.error("Error checking AI trigger: %s", str(e))
         return None
 
-    async def watch(self):
-        """Continuously evaluate the trigger at the specified interval."""
+    async def watch(self) -> None:
+        """Watch for trigger conditions."""
         while True:
             try:
                 ctx = await self.check()
                 if ctx is not None:
                     yield ctx
             except Exception as e:
-                logger.error("Error in AI trigger evaluation: %s", e)
+                logger.error("Error in AI trigger watch loop: %s", str(e))
             await asyncio.sleep(self.interval) 

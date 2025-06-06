@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from .models import get_model
-from .tools import get_tools, get_litellm_tools, load_tools_from_module
+from .tools import get_tools, load_tools_from_module
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,6 @@ class Agent:
         Returns:
             Dict containing the model's response and any tool outputs.
         """
-        # Convert tools to LiteLLM format
-        tools = get_litellm_tools(self.tool_configs)
-        
-        response = await self.model.ainvoke(prompt, tools=tools)
+        # Call the model with tools (conversion is now handled in the model)
+        response = await self.model.ainvoke(prompt, tools=self.tool_configs)
         return {"response": response} 
