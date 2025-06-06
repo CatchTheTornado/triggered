@@ -13,10 +13,27 @@ Triggered is a Python library for creating and managing AI-powered triggers and 
 - Folder monitoring
 - Webhook monitoring
 
-## Installation
+## Development Setup
 
+1. Install Poetry (if not already installed):
 ```bash
-pip install triggered
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
+2. Clone the repository:
+```bash
+git clone https://github.com/CatchTheTornado/triggered.git
+cd triggered
+```
+
+3. Install dependencies using Poetry:
+```bash
+poetry install
+```
+
+4. Activate the Poetry shell:
+```bash
+poetry shell
 ```
 
 ## Quick Start
@@ -52,7 +69,8 @@ ollama pull llama3.1
 
 3. Run the trigger:
 ```bash
-triggered run-trigger triggers/my_trigger.json
+# Make sure you're in the Poetry shell
+poetry run python -m triggered.cli run-trigger triggers/my_trigger.json
 ```
 
 ## Configuration
@@ -150,20 +168,19 @@ export LITELLM_API_BASE="http://localhost:11434"  # Default API base
 
 ## Development
 
-1. Clone the repository:
+1. Make sure you're in the Poetry shell:
 ```bash
-git clone https://github.com/CatchTheTornado/triggered.git
-cd triggered
+poetry shell
 ```
 
-2. Install dependencies:
+2. Run tests:
 ```bash
-pip install -e .
+poetry run pytest
 ```
 
-3. Run tests:
+3. Run a trigger:
 ```bash
-pytest
+poetry run python -m triggered.cli run-trigger triggers/random_trigger.json
 ```
 
 ## License
