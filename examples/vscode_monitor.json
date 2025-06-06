@@ -2,7 +2,7 @@
   "trigger_type": "ai",
   "trigger_config": {
     "name": "vscode-monitor",
-    "prompt": "Check if Visual Studio Code is running. If it is running, trigger the action. If not, don't trigger.",
+    "prompt": "Check if Visual Studio Code is running. Use the Visual Studio Code process name which is: Code. If it is running, trigger the action. If not, don't trigger.",
     "interval": 30,
     "custom_tools_path": "./examples/process_checker.py",
     "tools": [{
