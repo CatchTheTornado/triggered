@@ -8,12 +8,18 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 
 
+class ConfigurationContext(BaseModel):
+    """Holds configuration options for a single trigger-action run."""
+    options: Dict[str, Any] = Field(default_factory=dict)
+
+
 class TriggerContext(BaseModel):
     """Runtime information passed from Trigger to Action."""
 
     trigger_name: str
     fired_at: _dt.datetime = Field(default_factory=_dt.datetime.utcnow)
     data: Dict[str, Any] = Field(default_factory=dict)
+    config: ConfigurationContext = Field(default_factory=ConfigurationContext)
 
 
 class Trigger(abc.ABC):
@@ -80,6 +86,7 @@ class TriggerAction(BaseModel):
     trigger_config: Dict[str, Any]
     action_type: str
     action_config: Dict[str, Any]
+    params: Dict[str, Any] = Field(default_factory=dict)
 
     def instantiate(self):
         from .registry import get_trigger, get_action  # lazy import
