@@ -29,14 +29,14 @@ class AITrigger(Trigger):
                 name="model",
                 type="string",
                 description="Model to use",
-                default="ollama/llama3.1",
+                default="openai/gpt-4o",
                 required=True
             ),
             ConfigField(
                 name="api_base",
                 type="string",
                 description="API base URL",
-                default="http://localhost:11434",
+                default="",
                 required=True
             ),
             ConfigField(

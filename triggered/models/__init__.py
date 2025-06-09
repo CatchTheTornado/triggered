@@ -31,7 +31,7 @@ class LiteLLMModel(BaseModelAdapter):
         **kwargs
     ) -> None:
         self.model = model or os.getenv("LITELLM_MODEL", "ollama/llama3.1")
-        self.api_base = api_base or os.getenv("LITELLM_API_BASE", "http://localhost:11434")
+        self.api_base = api_base or os.getenv("LITELLM_API_BASE", "")
         self.kwargs = kwargs
 
     def _convert_tools_to_litellm_format(self, tool_configs: List[Union[str, Dict[str, Any]]]) -> List[Dict[str, Any]]:
@@ -74,15 +74,51 @@ class LiteLLMModel(BaseModelAdapter):
 
         # Look for JSON in code blocks
         import re
+        # Match JSON in code blocks, handling multiline content
         json_pattern = r'```(?:json)?\s*(\{[\s\S]*?\})\s*```'
         matches = re.findall(json_pattern, text)
         if matches:
             try:
-                # Try to parse the first match to validate it's JSON
-                json.loads(matches[0])
-                return matches[0]
+                # Clean up the matched JSON string
+                json_str = matches[0]
+                # Remove any leading/trailing whitespace and newlines
+                json_str = json_str.strip()
+                # Parse to validate it's JSON
+                json.loads(json_str)
+                return json_str
             except json.JSONDecodeError:
-                pass
+                # If parsing fails, try to clean up the JSON string
+                try:
+                    # Remove any extra whitespace between properties
+                    json_str = re.sub(r'\s+', ' ', json_str)
+                    # Remove any trailing commas
+                    json_str = re.sub(r',\s*}', '}', json_str)
+                    # Try parsing again
+                    json.loads(json_str)
+                    return json_str
+                except json.JSONDecodeError:
+                    logger.error("Failed to parse JSON from code block: %s", json_str)
+                    pass
+
+        # If no JSON found in code blocks, try to find any JSON-like structure
+        try:
+            # Look for anything that looks like a JSON object
+            json_pattern = r'(\{[\s\S]*?\})'
+            matches = re.findall(json_pattern, text)
+            if matches:
+                for match in matches:
+                    try:
+                        # Clean up the potential JSON string
+                        json_str = match.strip()
+                        # Remove any extra whitespace
+                        json_str = re.sub(r'\s+', ' ', json_str)
+                        # Try parsing
+                        json.loads(json_str)
+                        return json_str
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as e:
+            logger.error("Error while searching for JSON: %s", str(e))
 
         return None
 

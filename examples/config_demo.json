@@ -2,6 +2,7 @@
     "trigger": {
         "type": "ai",
         "config": {
+            "model": "ollama/llama3.1",
             "name": "config-demo",
             "prompt": "Check if the configuration is working",
             "custom_tools_path": "./examples/config_demo_tool.py",
