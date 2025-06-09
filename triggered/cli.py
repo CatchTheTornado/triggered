@@ -14,7 +14,7 @@ from rich.text import Text
 from rich.syntax import Syntax
 from pydantic import BaseModel
 
-from .core import TriggerAction
+from .core import TriggerAction, TriggerDefinition, ActionDefinition
 from .registry import get_trigger, get_action
 from .config_schema import get_trigger_config_schema, get_action_config_schema
 from .logging_config import (
@@ -143,9 +143,9 @@ def display_loaded_trigger_actions():
             data = json.loads(trigger.read_text())
             trigger_actions_table.add_row(
                 trigger.name,
-                data.get("trigger_type", "Unknown"),
-                data.get("action_type", "Unknown"),
-                data.get("trigger_config", {}).get("name", "Unnamed")
+                data.get("trigger", {}).get("type", "Unknown"),
+                data.get("action", {}).get("type", "Unknown"),
+                data.get("trigger", {}).get("config", {}).get("name", "Unnamed")
             )
         except Exception as e:
             trigger_actions_table.add_row(
@@ -318,10 +318,8 @@ def add_trigger(
 
     # Create and save trigger
     ta = TriggerAction(
-        trigger_type=trigger_type,
-        trigger_config=trigger_config,
-        action_type=action_type,
-        action_config=action_config,
+        trigger=TriggerDefinition(type=trigger_type, config=trigger_config),
+        action=ActionDefinition(type=action_type, config=action_config),
     )
     file_path = TRIGGER_ACTIONS_DIR / f"{ta.id}.json"
     file_path.write_text(
@@ -470,11 +468,11 @@ async def _execute_ta_once(ta_path: Path):
     data = json.loads(ta_path.read_text())
     ta = TriggerAction.model_validate(data)  # type: ignore[attr-defined]
 
-    trigger_cls = get_trigger(ta.trigger_type)
-    action_cls = get_action(ta.action_type)
+    trigger_cls = get_trigger(ta.trigger.type)
+    action_cls = get_action(ta.action.type)
 
-    trigger = trigger_cls(ta.trigger_config)
-    action = action_cls(ta.action_config)
+    trigger = trigger_cls(ta.trigger.config)
+    action = action_cls(ta.action.config)
 
     ctx = None
     if hasattr(trigger, "check"):
@@ -484,14 +482,14 @@ async def _execute_ta_once(ta_path: Path):
             ctx.params.update(ta.params)
     
     if ctx is None:
-        log_trigger_check(ta.trigger_config.get("name", "Unknown"), False, "Trigger not fired")
+        log_trigger_check(ta.trigger.config.get("name", "Unknown"), False, "Trigger not fired")
         return
 
     triggered = ctx.data.get("trigger", False)
     reason = ctx.data.get("reason", "No reason provided")
-    log_trigger_check(ta.trigger_config.get("name", "Unknown"), triggered, reason)
+    log_trigger_check(ta.trigger.config.get("name", "Unknown"), triggered, reason)
         
-    action_name = ta.action_config.get("name", ta.action_type)
+    action_name = ta.action.config.get("name", ta.action.type)
     log_action_start(action_name)
     try:
         result = await action.execute(ctx)

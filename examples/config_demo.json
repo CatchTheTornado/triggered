@@ -1,20 +1,19 @@
 {
-    "trigger_type": "ai",
-    "trigger_config": {
-        "name": "config-demo-trigger",
-        "prompt": "Check if the message from config is 'Hello World'. Use the config_demo tool to get the message.",
-        "interval": 60,
-        "tools": [{
-            "type": "config_demo",
-            "key": "message"
-        }]
+    "trigger": {
+        "type": "ai",
+        "config": {
+            "name": "config-demo",
+            "prompt": "Check if the configuration is working",
+            "tools": ["config_demo"]
+        }
     },
-    "action_type": "shell",
-    "action_config": {
-        "name": "config-demo-action",
-        "command": "echo 'Message from config: ${message}'"
+    "action": {
+        "type": "shell",
+        "config": {
+            "command": "echo 'Configuration is working!'"
+        }
     },
     "params": {
-        "message": "Hello World"
+        "message": "Hello from configuration!"
     }
 } 

@@ -1,19 +1,16 @@
 {
-    "trigger_type": "ai",
-    "trigger_config": {
-        "name": "random_number_trigger",
-        "model": "ollama/llama3.1",
-        "api_base": "http://localhost:11434",
-        "interval": 60,
-        "prompt": "Generate a random number between 1 and 10. Make the decision based on the number - if >=5 then trigger otherwise don't trigger",
-        "tools": [
-            {
-                "type": "random_number"
-            }
-        ]
-    },
-    "action_type": "shell",
-    "action_config": {
-        "command": "echo 'Got a high number!'"
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "random-trigger",
+      "prompt": "Generate a random number between 1 and 10. If it's greater than 5, trigger the action.",
+      "tools": []
     }
+  },
+  "action": {
+    "type": "shell",
+    "config": {
+      "command": "echo 'Random number was greater than 5!'"
+    }
+  }
 } 

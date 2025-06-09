@@ -72,20 +72,30 @@ class Action(abc.ABC):
         """Execute action logic."""
 
 
+class TriggerDefinition(BaseModel):
+    """Definition of a trigger in a trigger-action pair."""
+    type: str
+    config: Dict[str, Any]
+
+
+class ActionDefinition(BaseModel):
+    """Definition of an action in a trigger-action pair."""
+    type: str
+    config: Dict[str, Any]
+
+
 class TriggerAction(BaseModel):
     """Configuration entity representing a Trigger + Action pair."""
 
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     auth_key: str = Field(default_factory=lambda: uuid.uuid4().hex)
-    trigger_type: str
-    trigger_config: Dict[str, Any]
-    action_type: str
-    action_config: Dict[str, Any]
+    trigger: TriggerDefinition
+    action: ActionDefinition
     params: Dict[str, Any] = Field(default_factory=dict)
 
     def instantiate(self):
         from .registry import get_trigger, get_action  # lazy import
 
-        trigger_cls = get_trigger(self.trigger_type)
-        action_cls = get_action(self.action_type)
-        return trigger_cls(self.trigger_config), action_cls(self.action_config) 
+        trigger_cls = get_trigger(self.trigger.type)
+        action_cls = get_action(self.action.type)
+        return trigger_cls(self.trigger.config), action_cls(self.action.config) 
