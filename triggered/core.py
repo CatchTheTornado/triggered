@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 class BaseConfig(BaseModel):
     """Base configuration model for triggers and actions."""
-    name: str = Field(description="Name of the trigger/action")
+    name: str = Field(default="", description="Name of the trigger/action")
 
 
 class TriggerContext(BaseModel):
@@ -62,7 +62,7 @@ class Trigger(abc.ABC):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = self.config_model(**config)
-        self.name = self.config.name
+        self.name = self.config.name or self.__class__.__name__.lower()
 
     @classmethod
     def get_config_schema(cls) -> 'ConfigSchema':
@@ -73,7 +73,7 @@ class Trigger(abc.ABC):
                 name="name",
                 type="string",
                 description="Trigger name",
-                required=True
+                required=False
             )
         ])
 
@@ -116,12 +116,22 @@ class Action(abc.ABC):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = self.config_model(**config)
+        if not self.config.name:
+            # Use the class name as the default name
+            self.config.name = self.__class__.__name__.lower()
 
     @classmethod
     def get_config_schema(cls) -> 'ConfigSchema':
         """Return the configuration schema for this action type."""
-        from .config_schema import ConfigSchema
-        return ConfigSchema(fields=[])
+        from .config_schema import ConfigSchema, ConfigField
+        return ConfigSchema(fields=[
+            ConfigField(
+                name="name",
+                type="string",
+                description="Action name",
+                required=False
+            )
+        ])
 
     @classmethod
     def validate_config(cls, config: Dict[str, Any]) -> tuple[bool, str | None]:

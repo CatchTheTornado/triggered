@@ -1,11 +1,17 @@
 import asyncio
 import logging
 
-from ..core import Action, TriggerContext
+from ..core import Action, TriggerContext, BaseConfig
 from ..registry import register_action
 from ..config_schema import ConfigSchema, ConfigField
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
+
+
+class ShellCommandConfig(BaseConfig):
+    """Configuration model for shell command action."""
+    command: str = Field(description="Shell command to execute (can use {var} for variable substitution)")
 
 
 @register_action("shell")
@@ -16,6 +22,7 @@ class ShellCommandAction(Action):
     Config keys:
     - command: str
     """
+    config_model = ShellCommandConfig
 
     @classmethod
     def get_config_schema(cls) -> 'ConfigSchema':
@@ -30,7 +37,7 @@ class ShellCommandAction(Action):
         ])
 
     async def execute(self, ctx: TriggerContext) -> dict:  # noqa: D401
-        command: str = self.config["command"].format(**ctx.data)
+        command: str = self.config.command.format(**ctx.data)
         logger.debug("Executing shell command: %s", command)
         proc = await asyncio.create_subprocess_shell(
             command,

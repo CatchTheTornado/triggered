@@ -4,12 +4,8 @@
     "config": {
       "name": "vscode-monitor",
       "prompt": "Check if VS Code is running",
-      "tools": [{
-        "type": "process_checker",
-        "config": {
-          "process_name": "Code"
-        }
-      }]
+      "custom_tools_path": "./examples/process_checker.py",
+      "tools": ["process_checker"]
     }
   },
   "action": {

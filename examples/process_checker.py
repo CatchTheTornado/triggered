@@ -2,7 +2,8 @@ import psutil
 from typing import Dict, Any
 from pydantic import BaseModel
 
-from triggered.tools import Tool, register_tool
+from triggered.tools import Tool
+from triggered.registry import register_tool
 
 class ProcessCheckerInput(BaseModel):
     """Input schema for process checker tool."""
@@ -15,20 +16,15 @@ class ProcessCheckerTool(Tool):
     description = "Checks if a specific process is running"
     args_schema = ProcessCheckerInput
 
-    async def execute(self, process_name: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def _call(self, process_name: str) -> Dict[str, Any]:
         """Check if a process is running.
         
         Args:
             process_name: Name of the process to check
-            config: Optional configuration dictionary
             
         Returns:
             Dict containing process status information
         """
-        # Use process_name from config if provided
-        if config and "process_name" in config:
-            process_name = config["process_name"]
-
         for proc in psutil.process_iter(['name']):
             try:
                 if process_name.lower() in proc.info['name'].lower():
