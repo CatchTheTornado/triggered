@@ -30,7 +30,7 @@ class LiteLLMModel(BaseModelAdapter):
         api_base: str | None = None,
         **kwargs
     ) -> None:
-        self.model = model or os.getenv("LITELLM_MODEL", "ollama/llama3.1")
+        self.model = model or os.getenv("LITELLM_MODEL", "openai/gpt-4o")
         self.api_base = api_base or os.getenv("LITELLM_API_BASE", "")
         self.kwargs = kwargs
 
