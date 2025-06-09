@@ -1,6 +1,6 @@
 # Triggered
 
-A Python library for creating and managing AI-powered triggers and actions.
+A Python library for creating and managing AI-powered triggers and actions. **Crontab on steroids**.
 
 ## Features
 
@@ -14,17 +14,6 @@ A Python library for creating and managing AI-powered triggers and actions.
 - Auto-discovery of custom components
 - Pluggable architecture for easy extension
 
-## Environment Variables
-
-- `TRIGGERED_LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-- `TRIGGERED_LOGS_PATH`: Set the path for log files (default: "logs")
-- `TRIGGERED_TRIGGER_ACTIONS_PATH`: Set the path for trigger definitions (default: "trigger_actions")
-- `TRIGGERED_EXAMPLES_PATH`: Set the path for example trigger definitions (default: "examples")
-- `TRIGGERED_TRIGGERS_MODULE`: Set the Python module path for trigger implementations (default: "triggered.triggers")
-- `TRIGGERED_ACTIONS_MODULE`: Set the Python module path for action implementations (default: "triggered.actions")
-- `TRIGGERED_TOOLS_MODULE`: Set the Python module path for tool implementations (default: "triggered.tools")
-- `TRIGGERED_BROKER_URL`: Set the Celery broker URL (default: "memory://")
-- `TRIGGERED_BACKEND_URL`: Set the Celery backend URL (default: "rpc://")
 
 ## Development Setup
 
@@ -271,7 +260,9 @@ The application uses a comprehensive logging system:
 2. Custom Tools
    - Can be added by creating a Python module
    - Must implement the Tool interface
+   - Must be saved in the file set in `custom_tools_path` config variable in the `trigger_action` JSON file.
    - Example implementation:
+
    ```python
    from triggered.tools import Tool
 
