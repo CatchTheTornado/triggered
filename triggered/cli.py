@@ -417,7 +417,7 @@ def ls(
 @app.command("run")
 def run_trigger_once(
     path: str = typer.Argument(
-        ...,
+        None,
         help="Path to the trigger-action JSON file",
         autocompletion=get_json_completion,
     ),
@@ -436,6 +436,19 @@ def run_trigger_once(
         triggered run trigger_actions/ai-ps.json
         triggered run ai-ps.json
     """
+    if not path:
+        console.print("[red]Error: Missing required argument 'path'[/red]")
+        console.print("\n[bold]Usage:[/bold]")
+        console.print("  triggered run <path>")
+        console.print("\n[bold]Arguments:[/bold]")
+        console.print("  path    Path to the trigger-action JSON file")
+        console.print("\n[bold]Examples:[/bold]")
+        console.print("  triggered run trigger_actions/ai-ps.json")
+        console.print("  triggered run ai-ps.json")
+        console.print("\n[bold]Available JSON files:[/bold]")
+        display_loaded_trigger_actions()
+        raise typer.Exit(1)
+
     print_app_title()
     
     # Convert string path to Path object
@@ -462,6 +475,9 @@ def run_trigger_once(
     console.print(f"Checked in:")
     console.print(f"  - {TRIGGER_ACTIONS_DIR}")
     console.print(f"  - {EXAMPLES_DIR}")
+    console.print("\n[bold]Available JSON files:[/bold]")
+    display_loaded_trigger_actions()
+    raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------
