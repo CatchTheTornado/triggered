@@ -1,6 +1,8 @@
 # 🚀 Triggered
 
-A Python library for creating and managing AI-powered triggers and actions. **Crontab on steroids** ⚡️
+A Python CLI + Server for creating and managing AI-powered triggers and actions. **Crontab on steroids**. Super easy to use and manage ⚡️
+
+
 
 <div align="center">
   <img src=".readme_assets/0.png" alt="Triggered Hero Image" width="800"/>
@@ -17,7 +19,7 @@ A Python library for creating and managing AI-powered triggers and actions. **Cr
       <td align="center">
         <img src=".readme_assets/2.png" alt="Triggered Dashboard" width="400"/>
         <br/>
-        <em>Web dashboard for monitoring triggers and actions</em>
+        <em>Running AI triggers from CLI or via Web API</em>
       </td>
     </tr>
   </table>
