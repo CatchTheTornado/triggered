@@ -42,7 +42,7 @@ A Python CLI + Server for creating and managing AI-powered triggers and actions.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/triggered.git
+git clone https://github.com/CatchTheTornado/triggered.git
 cd triggered
 ```
 
