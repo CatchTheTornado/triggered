@@ -59,6 +59,44 @@ class LiteLLMModel(BaseModelAdapter):
             })
         return tools
 
+    def _extract_json_from_text(self, text: str) -> Optional[str]:
+        """Extract JSON from text content.
+        
+        Looks for JSON objects in the text, either as a complete JSON string
+        or as a code block with JSON content.
+        """
+        # Try to parse the entire text as JSON first
+        try:
+            json.loads(text)
+            return text
+        except json.JSONDecodeError:
+            pass
+
+        # Look for JSON in code blocks
+        import re
+        json_pattern = r'```(?:json)?\s*(\{[\s\S]*?\})\s*```'
+        matches = re.findall(json_pattern, text)
+        if matches:
+            try:
+                # Try to parse the first match to validate it's JSON
+                json.loads(matches[0])
+                return matches[0]
+            except json.JSONDecodeError:
+                pass
+
+        return None
+
+    def _convert_tool_call_to_dict(self, tool_call) -> Dict[str, Any]:
+        """Convert a tool call object to a dictionary format."""
+        return {
+            "id": tool_call.id,
+            "type": tool_call.type,
+            "function": {
+                "name": tool_call.function.name,
+                "arguments": tool_call.function.arguments
+            }
+        }
+
     async def ainvoke(self, prompt: str, tools: list | None = None) -> str:
         try:
             messages = [{"role": "user", "content": prompt}]
@@ -102,30 +140,80 @@ class LiteLLMModel(BaseModelAdapter):
             
             # Handle tool calls
             if message.tool_calls:
-                tool_call = message.tool_calls[0]
-                tool_name = tool_call.function.name
-                tool_args = json.loads(tool_call.function.arguments)
+                logger.info("Tool calls detected: %s", message.tool_calls)
                 
-                logger.info("Tool call detected: %s with args: %s", tool_name, tool_args)
+                # Convert tool calls to dictionary format to avoid Pydantic warnings
+                tool_calls_dict = [self._convert_tool_call_to_dict(tc) for tc in message.tool_calls]
                 
-                if tool_name not in TOOL_REGISTRY:
-                    logger.error("Unknown tool called: %s", tool_name)
-                    return "Error: Unknown tool called"
+                # Add the assistant's message to the conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": message.content,
+                    "tool_calls": tool_calls_dict
+                })
+                
+                # Process each tool call
+                for tool_call in message.tool_calls:
+                    tool_name = tool_call.function.name
+                    tool_args = json.loads(tool_call.function.arguments)
                     
-                tool_cls = TOOL_REGISTRY[tool_name]
-                tool_instance = tool_cls()
-                result = await tool_instance._call(**tool_args)
+                    logger.info("Executing tool: %s with args: %s", tool_name, tool_args)
+                    
+                    if tool_name not in TOOL_REGISTRY:
+                        logger.error("Unknown tool called: %s", tool_name)
+                        return "Error: Unknown tool called"
+                        
+                    tool_cls = TOOL_REGISTRY[tool_name]
+                    tool_instance = tool_cls()
+                    result = await tool_instance._call(**tool_args)
+                    
+                    logger.info("Tool result: %s", result)
+                    
+                    # Add the tool response to the conversation
+                    messages.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": tool_name,
+                        "content": json.dumps(result)
+                    })
                 
-                logger.info("Tool call result: %s", result)
+                # Get a new response from the model with the tool results
+                second_response = await loop.run_in_executor(
+                    None,
+                    lambda: completion(
+                        model=self.model,
+                        messages=messages,
+                        api_base=self.api_base,
+                        **self.kwargs
+                    )
+                )
                 
-                # Return the tool result as a JSON string
-                return json.dumps({"result": result})
+                if not isinstance(second_response, ModelResponse):
+                    logger.error("Invalid response type from second LiteLLM call: %s", type(second_response))
+                    return "Error: Invalid response from model"
+                    
+                if not second_response.choices:
+                    logger.error("No choices in second LiteLLM response: %s", second_response)
+                    return "Error: No response from model"
+                    
+                final_message = second_response.choices[0].message
+                if not final_message.content:
+                    logger.error("No content in final LiteLLM response: %s", second_response)
+                    return "Error: Empty response from model"
+                    
+                return final_message.content
             
             # Handle regular content
             content = message.content
             if not content:
                 logger.error("No content in LiteLLM response: %s", response)
                 return "Error: Empty response from model"
+            
+            # Try to extract JSON from the content
+            json_content = self._extract_json_from_text(content)
+            if json_content:
+                logger.info("Extracted JSON from response: %s", json_content)
+                return json_content
                 
             return content
             
