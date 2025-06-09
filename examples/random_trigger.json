@@ -3,7 +3,7 @@
     "type": "ai",
     "config": {
       "name": "random-trigger",
-      "prompt": "Generate a random number between 1 and 10. If it's greater than 5, trigger the action.",
+      "prompt": "Generate a random number between 1 and 10 using the tool provided. If it's greater than 5, trigger the action.",
       "tools": []
     }
   },

@@ -106,6 +106,8 @@ class LiteLLMModel(BaseModelAdapter):
                 tool_name = tool_call.function.name
                 tool_args = json.loads(tool_call.function.arguments)
                 
+                logger.info("Tool call detected: %s with args: %s", tool_name, tool_args)
+                
                 if tool_name not in TOOL_REGISTRY:
                     logger.error("Unknown tool called: %s", tool_name)
                     return "Error: Unknown tool called"
@@ -113,6 +115,8 @@ class LiteLLMModel(BaseModelAdapter):
                 tool_cls = TOOL_REGISTRY[tool_name]
                 tool_instance = tool_cls()
                 result = await tool_instance._call(**tool_args)
+                
+                logger.info("Tool call result: %s", result)
                 
                 # Return the tool result as a JSON string
                 return json.dumps({"result": result})
