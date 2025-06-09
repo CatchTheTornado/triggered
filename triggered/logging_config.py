@@ -40,8 +40,6 @@ def log_telemetry(message: str):
 def log_result_details(result: Any):
     """Log result details with Rich formatting."""
     if result:
-        # Display nicely formatted result in console
-        console.print(Syntax(json.dumps(result, indent=2), "json", theme="monokai"))
         # Log to file
         logger.info(f"Result details: {json.dumps(result, indent=2)}")
 
