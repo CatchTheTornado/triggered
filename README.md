@@ -1,18 +1,18 @@
-# Triggered
+# 🚀 Triggered
 
-A Python library for creating and managing AI-powered triggers and actions. **Crontab on steroids**.
+A Python library for creating and managing AI-powered triggers and actions. **Crontab on steroids** ⚡️
 
-## Features
+## ✨ Features
 
-- AI-powered triggers that can monitor and react to various conditions
-- Flexible action system for executing tasks when triggers fire
-- FastAPI server for managing triggers and handling webhooks
-- Rich CLI interface with interactive trigger creation
-- Comprehensive logging system with both console and file output
-- Support for various trigger types (e.g., AI-based, webhook-based)
-- Support for various action types (e.g., shell commands, TypeScript scripts)
-- Auto-discovery of custom components
-- Pluggable architecture for easy extension
+- 🤖 AI-powered triggers that can monitor and react to various conditions
+- ⚡️ Flexible action system for executing tasks when triggers fire
+- 🌐 FastAPI server for managing triggers and handling webhooks
+- 🖥️ Rich CLI interface with interactive trigger creation
+- 📝 Comprehensive logging system with both console and file output
+- 🔌 Support for various trigger types (e.g., AI-based, webhook-based)
+- 🛠️ Support for various action types (e.g., shell commands, TypeScript scripts)
+- 🔍 Auto-discovery of custom components
+- 🧩 Pluggable architecture for easy extension
 
 
 ## Development Setup
