@@ -1,41 +1,40 @@
 import psutil
 from typing import Dict, Any
+from pydantic import BaseModel
 
-from ..triggered.tools import Tool
+from triggered.tools import Tool
+
+class ProcessCheckerInput(BaseModel):
+    """Input schema for process checker tool."""
+    process_name: str = "Name of the process to check"
 
 class ProcessCheckerTool(Tool):
     """Tool for checking if a specific process is running."""
     
     name = "process_checker"
-    description = "Checks if a specific process is running by name"
+    description = "Checks if a specific process is running"
+    args_schema = ProcessCheckerInput
 
-    async def execute(self, process_name: str, **kwargs) -> Dict[str, Any]:
+    async def execute(self, process_name: str) -> Dict[str, Any]:
         """Check if a process is running.
         
         Args:
-            process_name: Name of the process to check (e.g., "Code" for VS Code)
+            process_name: Name of the process to check
             
         Returns:
-            Dict containing:
-                - running: bool indicating if process is running
-                - count: number of matching processes
-                - details: list of process details
+            Dict containing process status information
         """
-        matching_processes = []
-        
-        for proc in psutil.process_iter(['name', 'pid', 'create_time']):
+        for proc in psutil.process_iter(['name']):
             try:
                 if process_name.lower() in proc.info['name'].lower():
-                    matching_processes.append({
-                        'pid': proc.info['pid'],
-                        'name': proc.info['name'],
-                        'create_time': proc.info['create_time']
-                    })
+                    return {
+                        "running": True,
+                        "process_name": proc.info['name'],
+                        "pid": proc.pid
+                    }
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
-        
         return {
-            'running': len(matching_processes) > 0,
-            'count': len(matching_processes),
-            'details': matching_processes
+            "running": False,
+            "process_name": process_name
         } 
