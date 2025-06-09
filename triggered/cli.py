@@ -481,7 +481,7 @@ async def _execute_ta_once(ta_path: Path):
         # Create context with configuration
         ctx = await trigger.check()
         if ctx:
-            ctx.config.options.update(ta.params)
+            ctx.params.update(ta.params)
     
     if ctx is None:
         log_trigger_check(ta.trigger_config.get("name", "Unknown"), False, "Trigger not fired")

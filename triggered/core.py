@@ -3,14 +3,9 @@ from __future__ import annotations
 import abc
 import datetime as _dt
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TypedDict
 
 from pydantic import BaseModel, Field
-
-
-class ConfigurationContext(BaseModel):
-    """Holds configuration options for a single trigger-action run."""
-    options: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TriggerContext(BaseModel):
@@ -19,7 +14,7 @@ class TriggerContext(BaseModel):
     trigger_name: str
     fired_at: _dt.datetime = Field(default_factory=_dt.datetime.utcnow)
     data: Dict[str, Any] = Field(default_factory=dict)
-    config: ConfigurationContext = Field(default_factory=ConfigurationContext)
+    params: Dict[str, Any] = Field(default_factory=dict)
 
 
 class Trigger(abc.ABC):

@@ -2,6 +2,7 @@ from typing import Dict, Any
 from pydantic import BaseModel
 
 from triggered.tools import Tool
+from triggered.core import TriggerContext
 
 class ConfigDemoInput(BaseModel):
     """Input schema for config demo tool."""
@@ -14,17 +15,17 @@ class ConfigDemoTool(Tool):
     description = "Retrieves a value from the configuration context"
     args_schema = ConfigDemoInput
 
-    async def execute(self, key: str, ctx) -> Dict[str, Any]:
+    async def execute(self, key: str, ctx: TriggerContext) -> Dict[str, Any]:
         """Get a value from the configuration context.
         
         Args:
             key: The configuration key to retrieve
-            ctx: The trigger context containing configuration
+            ctx: The trigger context containing parameters
             
         Returns:
             Dict containing the configuration value
         """
-        value = ctx.config.options.get(key, "Not found")
+        value = ctx.params.get(key, "Not found")
         return {
             "key": key,
             "value": value
