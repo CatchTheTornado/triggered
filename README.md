@@ -159,10 +159,27 @@ The application uses a comprehensive logging system:
        "name": "my_trigger",
        "prompt": "Your condition here",
        "interval": 60,
+       "tools": ["random_number"],
+       "model": "openai/gpt-4",  // optional, defaults to ollama/llama3.1
+       "api_base": "https://api.openai.com/v1"  // optional, defaults to http://localhost:11434
+     }
+   }
+   ```
+
+   To use OpenAI models:
+   ```json
+   {
+     "trigger_type": "ai",
+     "trigger_config": {
+       "name": "my_trigger",
+       "prompt": "Your condition here",
+       "model": "openai/gpt-4",  // or gpt-3.5-turbo
+       "api_base": "https://api.openai.com/v1",
        "tools": ["random_number"]
      }
    }
    ```
+   Note: Make sure to set your OpenAI API key in the environment variable `OPENAI_API_KEY`.
 
 2. Webhook Trigger (`webhook`)
    - Fires on HTTP requests

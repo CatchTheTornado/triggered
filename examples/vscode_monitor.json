@@ -2,6 +2,8 @@
   "trigger": {
     "type": "ai",
     "config": {
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1",
       "name": "vscode-monitor",
       "prompt": "Check if VS Code is running. If it is, trigger the action. If not, don't trigger.",
       "custom_tools_path": "./examples/process_checker.py",
