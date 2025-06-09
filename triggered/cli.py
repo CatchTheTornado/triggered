@@ -84,6 +84,43 @@ def get_available_tool_types() -> list[str]:
     from .registry import TOOL_REGISTRY
     return list(TOOL_REGISTRY.keys())
 
+def get_python_files_completion():
+    """Get list of Python files for tab completion."""
+    return [str(f.relative_to(Path.cwd())) for f in Path.cwd().rglob("*.py")]
+
+def prompt_for_custom_tools() -> Optional[str]:
+    """Prompt for custom tools path with validation and re-ask if invalid."""
+    while True:
+        custom_tools_path = Prompt.ask(
+            "Path to custom tools Python file (optional, press Enter to skip)",
+            default="",
+            show_default=False
+        )
+        
+        if not custom_tools_path:
+            return None
+            
+        path = Path(custom_tools_path).expanduser().resolve()
+        if not path.exists():
+            console.print(f"[red]Error: File not found: {path}[/red]")
+            if not Confirm.ask("Would you like to try again?"):
+                return None
+            continue
+            
+        if not path.is_file():
+            console.print(f"[red]Error: Not a file: {path}[/red]")
+            if not Confirm.ask("Would you like to try again?"):
+                return None
+            continue
+            
+        if path.suffix != '.py':
+            console.print(f"[red]Error: Not a Python file: {path}[/red]")
+            if not Confirm.ask("Would you like to try again?"):
+                return None
+            continue
+            
+        return str(path)
+
 def display_loaded_actions():
     """Display and log loaded actions in a nice table format."""
     from .registry import ACTION_REGISTRY, TRIGGER_REGISTRY
@@ -254,14 +291,30 @@ def print_app_title():
     ))
     display_loaded_trigger_actions()
 
-def display_available_tools():
+def display_available_tools(custom_tools_path: Optional[str] = None):
     """Display and log available tools in a nice table format."""
     from .registry import TOOL_REGISTRY
+    from .tools import load_tools_from_module
+    
+    # Load custom tools if path provided
+    if custom_tools_path:
+        try:
+            load_tools_from_module(custom_tools_path)
+            console.print(f"[green]Loaded custom tools from: {custom_tools_path}[/green]")
+        except Exception as e:
+            console.print(f"[red]Failed to load custom tools: {str(e)}[/red]")
+            if not Confirm.ask("Would you like to try a different file?"):
+                return
+            new_path = prompt_for_custom_tools()
+            if new_path:
+                display_available_tools(new_path)
+            return
     
     # Create table for tools
     tool_table = Table(title="Available Tools", show_header=True, header_style="bold magenta")
     tool_table.add_column("Type", style="cyan")
     tool_table.add_column("Description", style="green")
+    tool_table.add_column("Source", style="yellow")
     tool_table.add_column("Input Schema", style="blue")
     
     # Add tools to table
@@ -269,9 +322,11 @@ def display_available_tools():
         tool_cls = TOOL_REGISTRY[tool_type]
         description = tool_cls.description
         schema = tool_cls.args_schema.model_json_schema()
+        source = "Custom" if custom_tools_path and tool_type in TOOL_REGISTRY else "Built-in"
         tool_table.add_row(
             tool_type,
             description,
+            source,
             json.dumps(schema.get("properties", {}), indent=2)
         )
     
@@ -334,7 +389,8 @@ def add_trigger(
         
         # Show available tools if AI trigger or action is selected
         if trigger_type == "ai" or action_type == "ai_agent":
-            display_available_tools()
+            custom_tools_path = prompt_for_custom_tools()
+            display_available_tools(custom_tools_path)
         
         # Get configurations interactively using schemas
         trigger_schema = get_trigger_config_schema(trigger_type)
