@@ -2,9 +2,12 @@
   "trigger": {
     "type": "ai",
     "config": {
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1",
+
       "name": "random-trigger",
       "prompt": "Generate a random number between 1 and 10 using the tool provided. If it's greater than 5, trigger the action.",
-      "tools": []
+      "tools": ["random_number"]
     }
   },
   "action": {
