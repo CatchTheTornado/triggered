@@ -117,6 +117,11 @@ def get_available_trigger_actions():
     """Get list of available trigger-action JSON files."""
     return list(TRIGGER_ACTIONS_DIR.glob("*.json")) + list(EXAMPLES_DIR.glob("*.json"))
 
+def get_json_completion():
+    """Get list of JSON files for tab completion."""
+    files = get_available_trigger_actions()
+    return [str(f.relative_to(Path.cwd())) for f in files]
+
 def display_loaded_trigger_actions():
     """Display and log loaded trigger-action JSON files in a table format."""
     if not TRIGGER_ACTIONS_DIR.exists():
@@ -411,7 +416,11 @@ def ls(
 
 @app.command("run")
 def run_trigger_once(
-    path: str = typer.Argument(...),
+    path: str = typer.Argument(
+        ...,
+        help="Path to the trigger-action JSON file",
+        autocompletion=get_json_completion,
+    ),
     log_level: str = typer.Option(
         None,
         "--log-level",

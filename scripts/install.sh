@@ -20,6 +20,50 @@ fi
 echo "[+] Installing Python dependencies via Poetry…"
 poetry install --extras "local-model"
 
+# 3b. Install shell completion -------------------------------------------
+echo "[+] Installing shell completion…"
+
+# Detect shell
+CURRENT_SHELL=$(basename "$SHELL")
+case "$CURRENT_SHELL" in
+    "zsh")
+        echo "[+] Installing Zsh completion…"
+        mkdir -p ~/.zsh/completion
+        poetry run triggered --show-completion zsh > ~/.zsh/completion/_triggered
+        
+        # Add completion to zshrc if not already present
+        if ! grep -q "~/.zsh/completion" ~/.zshrc; then
+            echo '\nfpath=(~/.zsh/completion $fpath)\nautoload -U compinit\ncompinit' >> ~/.zshrc
+            echo "[+] Added completion configuration to ~/.zshrc"
+        fi
+        ;;
+    "bash")
+        echo "[+] Installing Bash completion…"
+        mkdir -p ~/.local/share/bash-completion/completions
+        poetry run triggered --show-completion bash > ~/.local/share/bash-completion/completions/triggered
+        
+        # Add completion to bashrc if not already present
+        if ! grep -q "bash-completion" ~/.bashrc; then
+            echo '\n# Enable bash completion\nif [ -f /usr/share/bash-completion/bash_completion ]; then\n    . /usr/share/bash-completion/bash_completion\nelif [ -f /etc/bash_completion ]; then\n    . /etc/bash_completion\nfi' >> ~/.bashrc
+            echo "[+] Added completion configuration to ~/.bashrc"
+        fi
+        ;;
+    "fish")
+        echo "[+] Installing Fish completion…"
+        mkdir -p ~/.config/fish/completions
+        poetry run triggered --show-completion fish > ~/.config/fish/completions/triggered.fish
+        echo "[+] Added completion to ~/.config/fish/completions/triggered.fish"
+        ;;
+    *)
+        echo "[!] Shell completion not supported for $CURRENT_SHELL"
+        echo "[!] Supported shells: zsh, bash, fish"
+        ;;
+esac
+
+if [ "$CURRENT_SHELL" = "zsh" ] || [ "$CURRENT_SHELL" = "bash" ]; then
+    echo "[!] Please run 'source ~/.${CURRENT_SHELL}rc' or restart your terminal to enable completion"
+fi
+
 # 4. (Optional) Install & start Redis ---------------------------------------
 if [ "${NO_REDIS:-0}" != "1" ]; then
   if ! command -v redis-server >/dev/null 2>&1; then
