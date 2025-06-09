@@ -3,19 +3,19 @@
 A Python library for creating and managing AI-powered triggers and actions. **Crontab on steroids** ⚡️
 
 <div align="center">
-  <img src=".readme-assets/0.png" alt="Triggered Hero Image" width="800"/>
+  <img src=".readme_assets/0.png" alt="Triggered Hero Image" width="800"/>
 </div>
 
 <div align="center">
   <table>
     <tr>
       <td align="center">
-        <img src=".readme-assets/1.png" alt="Triggered CLI" width="400"/>
+        <img src=".readme_assets/1.png" alt="Triggered CLI" width="400"/>
         <br/>
         <em>Interactive CLI for creating and managing triggers</em>
       </td>
       <td align="center">
-        <img src=".readme-assets/2.png" alt="Triggered Dashboard" width="400"/>
+        <img src=".readme_assets/2.png" alt="Triggered Dashboard" width="400"/>
         <br/>
         <em>Web dashboard for monitoring triggers and actions</em>
       </td>
