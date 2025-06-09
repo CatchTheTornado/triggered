@@ -81,7 +81,7 @@ class AITrigger(Trigger):
     async def check(self) -> Optional[TriggerContext]:
         """Check if the trigger condition is met."""
         try:
-            general_instruction = "You are the decision maker if to run the user action or not. You must return a JSON response with the following schema: { \"trigger\": <true|false>, \"reason\": \"<short explanation why you made the decision>\" }. Here is the user defined criteria for you to consider:"
+            general_instruction = "You are the decision maker if to run the user action or not. You must return a JSON response with the following schema: { \"trigger\": <true|false>, \"reason\": \"<short explanation why you made the decision>\" }. Always response in this and only this format. Here is the user defined criteria for you to consider:"
             full_prompt = f"{general_instruction}\n\n{self.prompt}"
             response = await self.model.ainvoke(full_prompt, tools=self.tool_configs)
             try:

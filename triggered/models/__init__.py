@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List, Union
 import os
 from litellm import completion, ModelResponse
 from ..tools import TOOL_REGISTRY
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,27 @@ class LiteLLMModel(BaseModelAdapter):
                 logger.error("No choices in LiteLLM response: %s", response)
                 return "Error: No response from model"
                 
-            content = response.choices[0].message.content
+            message = response.choices[0].message
+            
+            # Handle tool calls
+            if message.tool_calls:
+                tool_call = message.tool_calls[0]
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
+                
+                if tool_name not in TOOL_REGISTRY:
+                    logger.error("Unknown tool called: %s", tool_name)
+                    return "Error: Unknown tool called"
+                    
+                tool_cls = TOOL_REGISTRY[tool_name]
+                tool_instance = tool_cls()
+                result = await tool_instance._call(**tool_args)
+                
+                # Return the tool result as a JSON string
+                return json.dumps({"result": result})
+            
+            # Handle regular content
+            content = message.content
             if not content:
                 logger.error("No content in LiteLLM response: %s", response)
                 return "Error: Empty response from model"
