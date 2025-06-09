@@ -104,6 +104,47 @@ triggered run triggers/your-trigger.json
 
 - `TRIGGERED_LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 - `TRIGGERED_LOGS_PATH`: Set the path for log files (default: "logs")
+- `TRIGGERED_TRIGGER_ACTIONS_PATH`: Set the path for trigger definitions (default: "trigger_actions")
+- `TRIGGERED_EXAMPLES_PATH`: Set the path for example trigger definitions (default: "examples")
+- `TRIGGERED_TRIGGERS_MODULE`: Set the Python module path for trigger implementations (default: "triggered.triggers")
+- `TRIGGERED_ACTIONS_MODULE`: Set the Python module path for action implementations (default: "triggered.actions")
+- `TRIGGERED_TOOLS_MODULE`: Set the Python module path for tool implementations (default: "triggered.tools")
+- `TRIGGERED_BROKER_URL`: Set the Celery broker URL (default: "memory://")
+- `TRIGGERED_BACKEND_URL`: Set the Celery backend URL (default: "rpc://")
+
+#### Parameter Environment Variable Binding
+
+Parameters in trigger-action definitions support environment variable binding using the `${VAR}` syntax. This allows you to use environment variables in your configurations without hardcoding values.
+
+Example:
+```json
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "env-demo",
+      "prompt": "Check if the API key is valid"
+    }
+  },
+  "action": {
+    "type": "shell",
+    "config": {
+      "command": "echo 'Using API key: ${API_KEY}'"
+    }
+  },
+  "params": {
+    "api_key": "${API_KEY}",
+    "api_url": "${API_URL:-https://api.example.com}"
+  }
+}
+```
+
+In this example:
+- `${API_KEY}` will be replaced with the value of the `API_KEY` environment variable
+- `${API_URL:-https://api.example.com}` uses a default value if `API_URL` is not set
+- The values are resolved at runtime when the trigger or action is executed
+
+You can access these parameters in your code using `ctx.get_param('param_name')`, which will automatically resolve any environment variables.
 
 ### Logging
 

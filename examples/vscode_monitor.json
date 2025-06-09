@@ -4,7 +4,12 @@
     "config": {
       "name": "vscode-monitor",
       "prompt": "Check if VS Code is running",
-      "tools": ["process_checker"]
+      "tools": [{
+        "type": "process_checker",
+        "config": {
+          "process_name": "Code"
+        }
+      }]
     }
   },
   "action": {
@@ -12,8 +17,5 @@
     "config": {
       "command": "echo 'VS Code is running!'"
     }
-  },
-  "params": {
-    "process_name": "Code"
   }
 } 

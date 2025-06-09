@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import abc
 import datetime as _dt
+import os
+import re
 import uuid
 from typing import Any, Dict, Optional, TypedDict
 
@@ -15,6 +17,36 @@ class TriggerContext(BaseModel):
     fired_at: _dt.datetime = Field(default_factory=_dt.datetime.utcnow)
     data: Dict[str, Any] = Field(default_factory=dict)
     params: Dict[str, Any] = Field(default_factory=dict)
+
+    def resolve_env_vars(self, value: str) -> str:
+        """Resolve environment variables in a string value.
+        
+        Args:
+            value: String that may contain environment variables in ${VAR} format
+            
+        Returns:
+            String with environment variables resolved
+        """
+        def replace_env_var(match):
+            var_name = match.group(1)
+            return os.getenv(var_name, f"${{{var_name}}}")
+        
+        return re.sub(r'\${([^}]+)}', replace_env_var, value)
+
+    def get_param(self, key: str, default: Any = None) -> Any:
+        """Get a parameter value with environment variable resolution.
+        
+        Args:
+            key: Parameter key
+            default: Default value if parameter not found
+            
+        Returns:
+            Parameter value with environment variables resolved if it's a string
+        """
+        value = self.params.get(key, default)
+        if isinstance(value, str):
+            return self.resolve_env_vars(value)
+        return value
 
 
 class Trigger(abc.ABC):
