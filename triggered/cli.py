@@ -433,22 +433,28 @@ def run_trigger_once(
     
     # Convert string path to Path object
     path_obj = Path(path)
-    dest_path = Path(path)
     
-    # If path is relative and doesn't start with 'triggers/', look in triggers directory
-    if not path_obj.is_absolute() and not str(path_obj).startswith('trigger_actions/'):
+    # First try TRIGGER_ACTIONS_DIR
+    if not path_obj.is_absolute():
         dest_path = TRIGGER_ACTIONS_DIR / path_obj
-
-    if not dest_path.exists():
-        if not path_obj.is_absolute() and not str(path_obj).startswith('examples/'):
-            dest_path = EXAMPLES_DIR / path_obj
-
-        if not dest_path.exists():
-            console.print(f"[red]Error: Trigger-action entry not found: {dest_path}[/red]")
+        if dest_path.exists():
+            console.print(f"[bold blue]Running trigger from trigger_actions:[/bold blue] {dest_path}")
+            asyncio.run(_execute_ta_once(dest_path))
             return
 
-    console.print(f"[bold blue]Running trigger:[/bold blue] {dest_path}")
-    asyncio.run(_execute_ta_once(dest_path))
+    # Then try EXAMPLES_DIR
+    if not path_obj.is_absolute():
+        dest_path = EXAMPLES_DIR / path_obj
+        if dest_path.exists():
+            console.print(f"[bold blue]Running trigger from examples:[/bold blue] {dest_path}")
+            asyncio.run(_execute_ta_once(dest_path))
+            return
+
+    # If we get here, the file wasn't found in either location
+    console.print(f"[red]Error: Trigger-action entry not found: {path_obj}[/red]")
+    console.print(f"Checked in:")
+    console.print(f"  - {TRIGGER_ACTIONS_DIR}")
+    console.print(f"  - {EXAMPLES_DIR}")
 
 
 # ---------------------------------------------------------------------------

@@ -66,6 +66,7 @@ class RuntimeManager:
         asyncio.create_task(self._dispatcher())
 
     def _load_from_disk(self):
+        # First check TRIGGER_ACTIONS_DIR
         for file in TRIGGER_ACTIONS_DIR.glob("*.json"):
             try:
                 data = json.loads(file.read_text())
@@ -76,6 +77,22 @@ class RuntimeManager:
                 self.trigger_actions.append(ta)
             except Exception as exc:  # noqa: WPS420
                 logger.error("Failed to load trigger file %s: %s", file, exc)
+
+        # Then check EXAMPLES_DIR for any files not already loaded
+        EXAMPLES_DIR = Path(os.getenv("TRIGGERED_EXAMPLES_PATH", "examples"))
+        if EXAMPLES_DIR.exists():
+            for file in EXAMPLES_DIR.glob("*.json"):
+                try:
+                    data = json.loads(file.read_text())
+                    # type: ignore[attr-defined]
+                    ta = TriggerAction.model_validate(
+                        data,
+                    )
+                    # Only add if not already loaded from TRIGGER_ACTIONS_DIR
+                    if not any(existing.id == ta.id for existing in self.trigger_actions):
+                        self.trigger_actions.append(ta)
+                except Exception as exc:  # noqa: WPS420
+                    logger.error("Failed to load example file %s: %s", file, exc)
 
     async def _spawn_watchers(self):
         for ta in self.trigger_actions:

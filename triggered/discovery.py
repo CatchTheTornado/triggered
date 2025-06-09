@@ -2,7 +2,7 @@ import os
 import importlib
 import inspect
 from pathlib import Path
-from typing import Type, Dict, Any
+from typing import Type, Dict, Any, List
 
 from .core import Trigger, Action
 from .tools import Tool
@@ -27,10 +27,22 @@ def discover_components(module_path: str, base_class: Type) -> Dict[str, Type]:
         pass
     return components
 
-def discover_triggers() -> Dict[str, Type[Trigger]]:
-    """Discover and register trigger components."""
-    module_path = get_module_path('TRIGGERED_TRIGGERS_MODULE', 'triggered.triggers')
-    return discover_components(module_path, Trigger)
+def discover_triggers() -> List[Path]:
+    """Discover all trigger-action JSON files in the trigger_actions and examples directories."""
+    trigger_files = []
+    
+    # First check TRIGGER_ACTIONS_DIR
+    if TRIGGER_ACTIONS_DIR.exists():
+        trigger_files.extend(TRIGGER_ACTIONS_DIR.glob("**/*.json"))
+    
+    # Then check EXAMPLES_DIR for any files not already found
+    if EXAMPLES_DIR.exists():
+        existing_files = {f.name for f in trigger_files}
+        for file in EXAMPLES_DIR.glob("**/*.json"):
+            if file.name not in existing_files:
+                trigger_files.append(file)
+    
+    return trigger_files
 
 def discover_actions() -> Dict[str, Type[Action]]:
     """Discover and register action components."""
