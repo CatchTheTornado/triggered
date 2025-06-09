@@ -79,6 +79,11 @@ def get_available_action_types() -> list[str]:
     from .registry import ACTION_REGISTRY
     return list(ACTION_REGISTRY.keys())
 
+def get_available_tool_types() -> list[str]:
+    """Get list of available tool types."""
+    from .registry import TOOL_REGISTRY
+    return list(TOOL_REGISTRY.keys())
+
 def display_loaded_actions():
     """Display and log loaded actions in a nice table format."""
     from .registry import ACTION_REGISTRY, TRIGGER_REGISTRY
@@ -249,6 +254,33 @@ def print_app_title():
     ))
     display_loaded_trigger_actions()
 
+def display_available_tools():
+    """Display and log available tools in a nice table format."""
+    from .registry import TOOL_REGISTRY
+    
+    # Create table for tools
+    tool_table = Table(title="Available Tools", show_header=True, header_style="bold magenta")
+    tool_table.add_column("Type", style="cyan")
+    tool_table.add_column("Description", style="green")
+    tool_table.add_column("Input Schema", style="blue")
+    
+    # Add tools to table
+    for tool_type in sorted(TOOL_REGISTRY.keys()):
+        tool_cls = TOOL_REGISTRY[tool_type]
+        description = tool_cls.description
+        schema = tool_cls.args_schema.model_json_schema()
+        tool_table.add_row(
+            tool_type,
+            description,
+            json.dumps(schema.get("properties", {}), indent=2)
+        )
+    
+    # Display table
+    console.print(tool_table)
+    
+    # Log as simple list
+    logger.info("Available tools: " + ", ".join(sorted(TOOL_REGISTRY.keys())))
+
 @app.command("add")
 def add_trigger(
     trigger_type: Optional[str] = typer.Option(None, help="Type of trigger"),
@@ -299,6 +331,10 @@ def add_trigger(
             choices=action_types,
             default=action_types[0]
         )
+        
+        # Show available tools if AI trigger or action is selected
+        if trigger_type == "ai" or action_type == "ai_agent":
+            display_available_tools()
         
         # Get configurations interactively using schemas
         trigger_schema = get_trigger_config_schema(trigger_type)
