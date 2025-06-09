@@ -1,7 +1,8 @@
 import asyncio
 import json
 import logging
-from typing import Any, Dict, Optional
+import re
+from typing import Any, Dict, Optional, Tuple
 from ..core import Trigger, TriggerContext
 from ..models import get_model
 from ..tools import get_tools, load_tools_from_module
@@ -9,6 +10,32 @@ from ..registry import register_trigger
 from ..config_schema import ConfigSchema, ConfigField
 
 logger = logging.getLogger(__name__)
+
+
+def extract_json_from_response(response: str) -> Tuple[Optional[Dict], Optional[str]]:
+    """
+    Extract JSON from a model response that might be wrapped in markdown or other formatting.
+    Returns a tuple of (parsed_json, error_message).
+    """
+    try:
+        # First try direct JSON parsing
+        return json.loads(response), None
+    except json.JSONDecodeError:
+        # Try to find JSON in markdown code blocks
+        json_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', response)
+        if not json_match:
+            # If no markdown block found, try to find any JSON object
+            json_match = re.search(r'\{[\s\S]*?\}', response)
+        
+        if json_match:
+            try:
+                json_str = json_match.group(1) if '```' in response else json_match.group(0)
+                # Clean up the string
+                json_str = re.sub(r'\s+', ' ', json_str)
+                return json.loads(json_str), None
+            except json.JSONDecodeError:
+                return None, f"Failed to parse extracted JSON: {response}"
+        return None, f"No valid JSON object found in response: {response}"
 
 
 @register_trigger("ai")
@@ -84,15 +111,19 @@ class AITrigger(Trigger):
             general_instruction = "You are the decision maker if to run the user action or not. You must return a JSON response with the following schema: { \"trigger\": <true|false>, \"reason\": \"<short explanation why you made the decision>\" }. Always response in this and only this format. Use the tools if provided and suitable to make the decision. Here is the user defined criteria for you to consider:"
             full_prompt = f"{general_instruction}\n\n{self.prompt}"
             response = await self.model.ainvoke(full_prompt, tools=self.tool_configs)
-            try:
-                obj = json.loads(response)
-                if not isinstance(obj, dict) or "trigger" not in obj:
-                    logger.error("Model response is not a valid JSON or missing 'trigger' field: %s", response)
-                    return None
-                if obj.get("trigger"):
-                    return TriggerContext(trigger_name=self.name, data=obj)
-            except json.JSONDecodeError:
-                logger.error("Failed to parse model response as JSON: %s", response)
+            
+            obj, error = extract_json_from_response(response)
+            if error:
+                logger.error(error)
+                return None
+                
+            if not isinstance(obj, dict) or "trigger" not in obj:
+                logger.error("Model response is not a valid JSON or missing 'trigger' field: %s", response)
+                return None
+                
+            if obj.get("trigger"):
+                return TriggerContext(trigger_name=self.name, data=obj)
+                
         except Exception as e:
             logger.error("Error checking AI trigger: %s", str(e))
         return None
