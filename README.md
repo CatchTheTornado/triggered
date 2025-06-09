@@ -451,4 +451,65 @@ pre-commit run --all-files
 
 ## License
 
-MIT License 
+MIT License
+
+### Tool Configuration Formats
+
+Tools can be configured in two different formats in your JSON configuration:
+
+1. Simple String Format:
+```json
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "simple-tools",
+      "prompt": "Your prompt here",
+      "tools": ["random_number", "config_demo"]
+    }
+  }
+}
+```
+
+2. Object Format with Type:
+```json
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "object-tools",
+      "prompt": "Your prompt here",
+      "tools": [
+        {
+          "type": "random_number"
+        },
+        {
+          "type": "config_demo"
+        }
+      ]
+    }
+  }
+}
+```
+
+Both formats are supported and will be automatically converted to the appropriate format internally. The object format is more flexible as it allows for additional configuration options to be added to each tool if needed in the future.
+
+#### Custom Tools
+
+To use custom tools, you need to:
+1. Create a Python module with your tool implementation
+2. Specify the path to your module in the configuration:
+
+```json
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "custom-tools",
+      "prompt": "Your prompt here",
+      "custom_tools_path": "./path/to/your/tools.py",
+      "tools": ["your_custom_tool"]
+    }
+  }
+}
+``` 

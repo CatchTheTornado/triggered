@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 import os
 from litellm import completion, ModelResponse
 from ..tools import TOOL_REGISTRY
@@ -33,14 +33,20 @@ class LiteLLMModel(BaseModelAdapter):
         self.api_base = api_base or os.getenv("LITELLM_API_BASE", "http://localhost:11434")
         self.kwargs = kwargs
 
-    def _convert_tools_to_litellm_format(self, tool_configs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _convert_tools_to_litellm_format(self, tool_configs: List[Union[str, Dict[str, Any]]]) -> List[Dict[str, Any]]:
         """Convert tool configurations to LiteLLM format."""
         tools = []
         for config in tool_configs:
-            tool_type = config.get("type")
+            # Handle both string and object formats
+            if isinstance(config, str):
+                tool_type = config
+            else:
+                tool_type = config.get("type")
+                
             if tool_type not in TOOL_REGISTRY:
                 logger.warning("Unknown tool type: %s", tool_type)
                 continue
+                
             tool_cls = TOOL_REGISTRY[tool_type]
             tools.append({
                 "type": "function",
