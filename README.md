@@ -453,6 +453,163 @@ pre-commit run --all-files
 
 MIT License
 
+### JSON Configuration Format
+
+The configuration is defined in JSON format with the following structure:
+
+```json
+{
+  "trigger": {
+    "type": "<trigger_type>",
+    "config": {
+      // Trigger-specific configuration
+    }
+  },
+  "action": {
+    "type": "<action_type>",
+    "config": {
+      // Action-specific configuration
+    }
+  },
+  "params": {
+    // Global parameters accessible to both trigger and action
+  }
+}
+```
+
+#### Trigger Configuration
+
+Each trigger type has its own configuration format:
+
+1. AI Trigger:
+```json
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "my-ai-trigger",
+      "prompt": "Your AI prompt here",
+      "model": "ollama/llama3.1",  // optional, defaults to ollama/llama3.1
+      "api_base": "http://localhost:11434",  // optional, defaults to http://localhost:11434
+      "interval": 60,  // optional, check interval in seconds
+      "tools": ["tool1", "tool2"],  // optional, list of tools
+      "custom_tools_path": "./path/to/tools.py"  // optional, path to custom tools
+    }
+  }
+}
+```
+
+2. Webhook Trigger:
+```json
+{
+  "trigger": {
+    "type": "webhook",
+    "config": {
+      "name": "my-webhook",
+      "path": "/webhook",
+      "auth_key": "your-secret-key",
+      "methods": ["POST", "GET"]  // optional, defaults to ["POST"]
+    }
+  }
+}
+```
+
+3. Folder Monitor Trigger:
+```json
+{
+  "trigger": {
+    "type": "folder-monitor",
+    "config": {
+      "name": "my-folder-monitor",
+      "path": "/path/to/watch",
+      "patterns": ["*.txt", "*.log"],  // optional, defaults to ["*"]
+      "events": ["created", "modified", "deleted"],  // optional, defaults to all events
+      "recursive": true  // optional, defaults to false
+    }
+  }
+}
+```
+
+4. Cron Trigger:
+```json
+{
+  "trigger": {
+    "type": "cron",
+    "config": {
+      "name": "my-cron",
+      "schedule": "0 9 * * *",  // cron expression
+      "timezone": "UTC"  // optional, defaults to system timezone
+    }
+  }
+}
+```
+
+#### Action Configuration
+
+Each action type has its own configuration format:
+
+1. Shell Command Action:
+```json
+{
+  "action": {
+    "type": "shell",
+    "config": {
+      "name": "my-shell-action",
+      "command": "echo 'Hello, ${name}!'",
+      "cwd": "/path/to/working/dir",  // optional, defaults to current directory
+      "timeout": 30  // optional, command timeout in seconds
+    }
+  }
+}
+```
+
+2. TypeScript Script Action:
+```json
+{
+  "action": {
+    "type": "typescript-script",
+    "config": {
+      "name": "my-ts-action",
+      "path": "scripts/my-script.ts",
+      "cwd": "/path/to/working/dir",  // optional, defaults to current directory
+      "timeout": 30  // optional, script timeout in seconds
+    }
+  }
+}
+```
+
+#### Global Parameters
+
+The `params` section contains global parameters that are accessible to both trigger and action:
+
+```json
+{
+  "params": {
+    "param1": "value1",
+    "param2": "value2",
+    "nested": {
+      "key": "value"
+    }
+  }
+}
+```
+
+Parameters can be accessed in:
+- Trigger context using `ctx.params.get('param1')`
+- Action context using `ctx.params.get('param1')`
+- Shell commands using `${param1}` syntax
+- TypeScript scripts through the context object
+
+Parameters also support environment variable binding:
+```json
+{
+  "params": {
+    "api_key": "${API_KEY}",
+    "api_url": "${API_URL:-https://api.example.com}"  // with default value
+  }
+}
+```
+
 ### Tool Configuration Formats
 
 Tools can be configured in two different formats in your JSON configuration:
