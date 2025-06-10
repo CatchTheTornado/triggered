@@ -210,4 +210,32 @@ class TriggerAction(BaseModel):
 
         trigger_cls = get_trigger(self.trigger.type)
         action_cls = get_action(self.action.type)
-        return trigger_cls(self.trigger.config), action_cls(self.action.config) 
+        return trigger_cls(self.trigger.config), action_cls(self.action.config)
+
+    async def execute_action(self, ctx: TriggerContext) -> Any:
+        """Execute the action with the given context.
+        
+        Args:
+            ctx: The trigger context to pass to the action
+            
+        Returns:
+            The result of the action execution
+        """
+        from .registry import get_action
+        from .logging_config import log_action_start, log_action_result, log_result_details
+
+        action_cls = get_action(self.action.type)
+        action = action_cls(self.action.config)
+        
+        # Log action start
+        action_name = self.action.config.get("name", self.action.type)
+        log_action_start(action_name)
+        
+        try:
+            result = await action.execute(ctx)
+            log_action_result(action_name, result)
+            log_result_details(result)
+            return result
+        except Exception as e:
+            log_action_result(action_name, error=str(e))
+            raise 

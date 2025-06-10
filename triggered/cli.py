@@ -579,17 +579,14 @@ def run_trigger_once(
 
 async def _execute_ta_once(ta_path: Path):
     """Load a TriggerAction JSON file and execute once synchronously."""
-    from .registry import get_trigger, get_action
+    from .registry import get_trigger
     from .core import TriggerAction
 
     data = json.loads(ta_path.read_text())
     ta = TriggerAction.model_validate(data)  # type: ignore[attr-defined]
 
     trigger_cls = get_trigger(ta.trigger.type)
-    action_cls = get_action(ta.action.type)
-
     trigger = trigger_cls(ta.trigger.config)
-    action = action_cls(ta.action.config)
 
     ctx = None
     if hasattr(trigger, "check"):
@@ -606,15 +603,8 @@ async def _execute_ta_once(ta_path: Path):
     reason = ctx.data.get("reason", "No reason provided")
     log_trigger_check(ta.trigger.config.get("name", "Unknown"), triggered, reason)
         
-    action_name = ta.action.config.get("name", ta.action.type)
-    log_action_start(action_name)
-    try:
-        result = await action.execute(ctx)
-        log_action_result(action_name, result)
-        log_result_details(result)
-    except Exception as e:
-        log_action_result(action_name, error=str(e))
-        raise
+    if triggered:
+        await ta.execute_action(ctx)
 
 
 @app.command("check")
