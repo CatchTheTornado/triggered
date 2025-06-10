@@ -284,9 +284,163 @@ async def get_trigger_info(trigger_id: str, auth: str):
     raise HTTPException(status_code=404, detail="Trigger not found")
 
 
-# @app.get("/events")
-# async def list_events(limit: int = 50):
-#     return RECENT_EVENTS[-limit:]
+@app.get("/trigger_actions")
+async def list_triggers():
+    """List all registered triggers."""
+    return [ta.model_dump() for ta in runtime.trigger_actions]
+
+
+@app.delete("/trigger_actions/{trigger_id}")
+async def delete_trigger(trigger_id: str, auth: str):
+    """Delete a trigger by ID."""
+    for i, ta in enumerate(runtime.trigger_actions):
+        if ta.id == trigger_id:
+            if ta.auth_key != auth:
+                raise HTTPException(status_code=403, detail="Invalid auth key")
+            
+            # Remove the trigger file if it exists
+            if ta.filename:
+                file_path = TRIGGER_ACTIONS_DIR / ta.filename
+                if file_path.exists():
+                    file_path.unlink()
+            
+            # Remove from runtime
+            runtime.trigger_actions.pop(i)
+            return {"status": "deleted"}
+    
+    raise HTTPException(status_code=404, detail="Trigger not found")
+
+
+@app.put("/trigger_actions/{trigger_id}")
+async def update_trigger(trigger_id: str, auth: str, req: Request):
+    """Update an existing trigger."""
+    # First find the existing trigger
+    existing_ta = None
+    for ta in runtime.trigger_actions:
+        if ta.id == trigger_id:
+            if ta.auth_key != auth:
+                raise HTTPException(status_code=403, detail="Invalid auth key")
+            existing_ta = ta
+            break
+    
+    if not existing_ta:
+        raise HTTPException(status_code=404, detail="Trigger not found")
+    
+    # Get the new configuration
+    body = await req.json()
+    try:
+        # type: ignore[attr-defined]
+        new_ta = TriggerAction.model_validate(body)
+    except Exception as exc:  # noqa: WPS420
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    
+    # Ensure the ID matches
+    if new_ta.id != trigger_id:
+        raise HTTPException(status_code=400, detail="Trigger ID mismatch")
+    
+    # Update the file
+    file_path = TRIGGER_ACTIONS_DIR / f"{new_ta.id}.json"
+    file_path.write_text(
+        json.dumps(
+            new_ta.model_dump(mode="json"),
+            indent=2,
+        ),
+    )
+    
+    # Update in runtime
+    for i, ta in enumerate(runtime.trigger_actions):
+        if ta.id == trigger_id:
+            runtime.trigger_actions[i] = new_ta
+            break
+    
+    return new_ta.model_dump()
+
+
+@app.get("/events")
+async def list_events(limit: int = 50):
+    """List recent trigger events.
+    
+    Args:
+        limit: Maximum number of events to return (default: 50)
+    """
+    return {
+        "events": RECENT_EVENTS[-limit:],
+        "total": len(RECENT_EVENTS),
+        "limit": limit
+    }
+
+
+@app.get("/status")
+async def get_status():
+    """Get server status and health information."""
+    return {
+        "status": "running",
+        "version": "1.0.0",  # TODO: Get from package version
+        "uptime": "0:00:00",  # TODO: Calculate from startup time
+        "worker": {
+            "status": "running" if worker_process and worker_process.poll() is None else "stopped",
+            "pid": worker_process.pid if worker_process else None
+        },
+        "triggers": {
+            "total": len(runtime.trigger_actions),
+            "active": len([ta for ta in runtime.trigger_actions if any(not t.done() for t in runtime._watcher_tasks)])
+        },
+        "queue": {
+            "size": runtime._queue.qsize() if hasattr(runtime, "_queue") else 0
+        }
+    }
+
+
+@app.post("/trigger_actions/{trigger_id}/run")
+async def run_trigger(trigger_id: str, auth: str):
+    """Manually run a trigger.
+    
+    This will execute the trigger's action immediately, bypassing the normal trigger conditions.
+    """
+    # Find the trigger
+    trigger_ta = None
+    for ta in runtime.trigger_actions:
+        if ta.id == trigger_id:
+            if ta.auth_key != auth:
+                raise HTTPException(status_code=403, detail="Invalid auth key")
+            trigger_ta = ta
+            break
+    
+    if not trigger_ta:
+        raise HTTPException(status_code=404, detail="Trigger not found")
+    
+    # Create a context for manual execution
+    from datetime import datetime
+    from .core import TriggerContext
+    
+    ctx = TriggerContext(
+        fired_at=datetime.utcnow(),
+        data={
+            "manual": True,
+            "reason": "Manually triggered via API"
+        }
+    )
+    
+    # Execute the action asynchronously
+    try:
+        task = execute_action.apply_async(
+            args=[
+                trigger_ta.model_dump(mode="json"),
+                ctx.model_dump(mode="json"),
+            ],
+            queue='triggered'
+        )
+        logger.info(f"Manual trigger execution scheduled with task ID: {task.id}")
+        
+        return {
+            "status": "scheduled",
+            "task_id": task.id,
+            "trigger_id": trigger_id,
+            "timestamp": ctx.fired_at.isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to schedule manual trigger execution: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to execute trigger: {str(e)}")
 
 
 @app.on_event("shutdown")
