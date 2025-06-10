@@ -93,22 +93,22 @@ def setup_worker_logging(**kwargs):
 @before_task_publish.connect
 def before_task_publish_handler(sender=None, headers=None, **kwargs):
     """Log when a task is about to be published."""
-    logger.info(f"Task about to be published: {sender} (ID: {headers.get('id')})")
+    logger.debug(f"Task about to be published: {sender} (ID: {headers.get('id')})")
 
 @after_task_publish.connect
 def after_task_publish_handler(sender=None, headers=None, **kwargs):
     """Log when a task has been published."""
-    logger.info(f"Task published: {sender} (ID: {headers.get('id')})")
+    logger.debug(f"Task published: {sender} (ID: {headers.get('id')})")
 
 @task_received.connect
 def task_received_handler(sender=None, request=None, **kwargs):
     """Log when a task is received by the worker."""
-    logger.info(f"Task received: {request.name} (ID: {request.id})")
+    logger.debug(f"Task received: {request.name} (ID: {request.id})")
 
 @task_success.connect
 def task_success_handler(sender=None, **kwargs):
     """Log when a task completes successfully."""
-    logger.info(f"Task succeeded: {sender.name} (ID: {sender.request.id})")
+    logger.debug(f"Task succeeded: {sender.name} (ID: {sender.request.id})")
 
 @task_failure.connect
 def task_failure_handler(sender=None, exception=None, **kwargs):
@@ -125,7 +125,7 @@ def execute_action(self, ta_dict: dict, ctx_dict: dict):  # noqa: D401
     sys.stdout.reconfigure(line_buffering=True)
     sys.stderr.reconfigure(line_buffering=True)
     
-    logger.info(f"Starting action execution in Celery worker (Task ID: {self.request.id})")
+    logger.debug(f"Starting action execution in Celery worker (Task ID: {self.request.id})")
     
     try:
         ta = TriggerAction.model_validate(ta_dict)  # type: ignore[attr-defined]
@@ -133,7 +133,7 @@ def execute_action(self, ta_dict: dict, ctx_dict: dict):  # noqa: D401
 
         # Run action synchronously within celery worker event loop
         result = asyncio.run(ta.execute_action(ctx))
-        logger.info(f"Action execution completed successfully (Task ID: {self.request.id})")
+        logger.debug(f"Action execution completed successfully (Task ID: {self.request.id})")
         return result
     except Exception as e:
         logger.error(f"Action execution failed (Task ID: {self.request.id}): {str(e)}", exc_info=True)

@@ -151,7 +151,7 @@ class RuntimeManager:
                     ],
                     queue='triggered'
                 )
-                logger.info(f"Action task scheduled with ID: {task.id}")
+                logger.debug(f"Action task scheduled with ID: {task.id}")
             except Exception as e:
                 logger.error(f"Failed to schedule action task: {str(e)}", exc_info=True)
 
@@ -257,7 +257,7 @@ def start_celery_worker():
     # Start threads to forward worker output
     def forward_output(pipe, prefix):
         for line in pipe:
-            logger.info(f"[Celery Worker] {line.strip()}")
+            logger.info(f"[celery] {line.strip()}")
     
     import threading
     threading.Thread(target=forward_output, args=(worker_process.stdout, "OUT"), daemon=True).start()
