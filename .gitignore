@@ -2,3 +2,7 @@
 *.lock
 logs/
 *.log
+data/
+*.sqlite
+*.sqlite3
+*.db

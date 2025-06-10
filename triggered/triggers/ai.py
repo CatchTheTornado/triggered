@@ -115,18 +115,20 @@ class AITrigger(Trigger):
             obj, error = extract_json_from_response(response)
             if error:
                 logger.error(error)
-                return None
+                return TriggerContext(trigger_name=self.name, data={"trigger": False, "reason": f"Error parsing response: {error}"})
                 
             if not isinstance(obj, dict) or "trigger" not in obj:
-                logger.error("Model response is not a valid JSON or missing 'trigger' field: %s", response)
-                return None
+                error_msg = "Model response is not a valid JSON or missing 'trigger' field"
+                logger.error(f"{error_msg}: {response}")
+                return TriggerContext(trigger_name=self.name, data={"trigger": False, "reason": error_msg})
                 
-            if obj.get("trigger"):
-                return TriggerContext(trigger_name=self.name, data=obj)
+            # Always return a context, even when not triggered
+            return TriggerContext(trigger_name=self.name, data=obj)
                 
         except Exception as e:
-            logger.error("Error checking AI trigger: %s", str(e))
-        return None
+            error_msg = f"Error checking AI trigger: {str(e)}"
+            logger.error(error_msg)
+            return TriggerContext(trigger_name=self.name, data={"trigger": False, "reason": error_msg})
 
     async def watch(self, queue_put) -> None:
         """Watch for trigger conditions."""
@@ -134,7 +136,12 @@ class AITrigger(Trigger):
             try:
                 ctx = await self.check()
                 if ctx is not None:
-                    await queue_put(ctx)
+                    triggered = ctx.data.get("trigger", False)
+                    reason = ctx.data.get("reason", "No reason provided")
+                    if triggered:
+                        await queue_put(ctx)
+                    else:
+                        logger.info(f"Trigger {self.name} not fired: {reason}")
             except Exception as e:
                 logger.error("Error in AI trigger watch loop: %s", str(e))
             await asyncio.sleep(self.interval) 
