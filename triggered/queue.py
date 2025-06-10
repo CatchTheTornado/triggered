@@ -6,6 +6,7 @@ from celery import Celery
 
 from .core import TriggerAction, TriggerContext
 from .registry import get_action
+from .logging_config import log_action_start, log_action_result, log_result_details
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,19 @@ def execute_action(ta_dict: dict, ctx_dict: dict):  # noqa: D401
     """Celery task that instantiates and executes an Action."""
     ta = TriggerAction.model_validate(ta_dict)  # type: ignore[attr-defined]
     ctx = TriggerContext.model_validate(ctx_dict)  # type: ignore[attr-defined]
-    action_cls = get_action(ta.action_type)
-    action = action_cls(ta.action_config)
+    action_cls = get_action(ta.action.type)
+    action = action_cls(ta.action.config)
 
-    # Run action synchronously within celery worker event loop
-    asyncio.run(action.execute(ctx)) 
+    # Log action start
+    action_name = ta.action.config.get("name", ta.action.type)
+    log_action_start(action_name)
+
+    try:
+        # Run action synchronously within celery worker event loop
+        result = asyncio.run(action.execute(ctx))
+        log_action_result(action_name, result)
+        log_result_details(result)
+        return result
+    except Exception as e:
+        log_action_result(action_name, error=str(e))
+        raise 
