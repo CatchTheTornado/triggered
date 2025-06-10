@@ -96,8 +96,8 @@ class RuntimeManager:
 
     async def _spawn_watchers(self):
         for ta in self.trigger_actions:
-            trigger_cls = get_trigger(ta.trigger_type)
-            trigger = trigger_cls(ta.trigger_config)
+            trigger_cls = get_trigger(ta.trigger.type)
+            trigger = trigger_cls(ta.trigger.config)
             task = asyncio.create_task(
                 trigger.watch(
                     lambda ctx, ta=ta: self._queue.put((ta, ctx)),
@@ -143,8 +143,8 @@ class RuntimeManager:
         )
         self.trigger_actions.append(ta)
         # Start watcher for this trigger
-        trigger_cls = get_trigger(ta.trigger_type)
-        trigger = trigger_cls(ta.trigger_config)
+        trigger_cls = get_trigger(ta.trigger.type)
+        trigger = trigger_cls(ta.trigger.config)
         task = asyncio.create_task(
             trigger.watch(
                 lambda ctx, ta=ta: self._queue.put((ta, ctx)),
