@@ -38,23 +38,46 @@ app = Celery(
 
 # Configure Celery logging and task settings
 app.conf.update(
+    # Logging configuration
     worker_log_format='[%(asctime)s: %(levelname)s/%(processName)s] %(message)s',
     worker_task_log_format='[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s',
     worker_redirect_stdouts=False,  # Don't redirect stdout/stderr
     worker_redirect_stdouts_level='INFO',  # Log level for redirected output
+    
+    # Task configuration
     task_serializer='json',
     accept_content=['json'],
     result_serializer='json',
     timezone='UTC',
     enable_utc=True,
     task_track_started=True,
-    task_publish_retry=True,
-    task_publish_retry_policy={
-        'max_retries': 3,
-        'interval_start': 0,
-        'interval_step': 0.2,
-        'interval_max': 0.2,
-    },
+    task_ignore_result=False,  # Always store task results
+    task_store_errors_even_if_ignored=True,  # Store errors even if result is ignored
+    
+    # Task execution settings
+    task_acks_late=True,  # Only acknowledge task after it's completed
+    task_reject_on_worker_lost=True,  # Reject task if worker dies
+    task_default_rate_limit='1/s',  # Limit task execution rate
+    task_time_limit=30,  # Task timeout in seconds
+    task_soft_time_limit=25,  # Soft timeout in seconds
+    
+    # Worker configuration
+    worker_prefetch_multiplier=1,  # Process one task at a time
+    worker_max_tasks_per_child=1,  # Restart worker after each task
+    worker_max_memory_per_child=512000,  # Restart worker if memory exceeds 512MB
+    worker_concurrency=1,  # Only one worker process
+    worker_pool='solo',  # Use solo pool to prevent duplicate execution
+    worker_pool_restarts=True,  # Enable pool restarts
+    worker_send_task_events=True,  # Enable task events
+    worker_hostname=f'triggered@{hostname}',  # Set explicit hostname
+    worker_disable_rate_limits=False,  # Enable rate limits
+    
+    # Broker configuration
+    broker_connection_retry=True,
+    broker_connection_retry_on_startup=True,
+    broker_connection_max_retries=10,
+    
+    # Queue configuration
     task_default_queue='triggered',
     task_queues={
         'triggered': {
@@ -68,16 +91,17 @@ app.conf.update(
             'routing_key': 'triggered'
         }
     },
-    worker_prefetch_multiplier=1,  # Process one task at a time
-    worker_max_tasks_per_child=1,  # Restart worker after each task
-    worker_send_task_events=True,  # Enable task events
-    task_send_sent_event=True,  # Enable sent events
-    worker_hostname=f'triggered@{hostname}',  # Set explicit hostname
-    broker_connection_retry=True,
-    broker_connection_retry_on_startup=True,
-    broker_connection_max_retries=10,
-    task_ignore_result=False,  # Always store task results
-    task_store_errors_even_if_ignored=True,  # Store errors even if result is ignored
+    
+    # Retry configuration
+    task_publish_retry=True,
+    task_publish_retry_policy={
+        'max_retries': 3,
+        'interval_start': 0,
+        'interval_step': 0.2,
+        'interval_max': 0.2,
+    },
+    
+    # Database configuration
     sqlalchemy_engine_options={
         'pool_pre_ping': True,
         'pool_recycle': 3600,

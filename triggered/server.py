@@ -256,11 +256,21 @@ def start_celery_worker():
     
     # Start threads to forward worker output
     def forward_output(pipe, prefix):
+        import re
+        # Pattern to match any of:
+        # 1. Timestamp and log level: [DD/MM/YY HH:MM:SS] INFO
+        # 2. Just log level: INFO
+        # 3. Celery format: [YYYY-MM-DD HH:MM:SS,SSS: INFO/MainProcess]
+        #log_pattern = re.compile(r'^\s*(?:\[\d{2}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}\]\s+|\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}:\s+\w+/\w+\]\s+)?\w+\s+')
+        
         for line in pipe:
-            logger.info(f"[celery] {line.strip()}")
+            # Strip timestamp and log level if present
+            #message = log_pattern.sub('', line.strip())
+            if line:  # Only log non-empty messages
+                logger.info(f"[celery] {line}")
     
     import threading
-    threading.Thread(target=forward_output, args=(worker_process.stdout, "OUT"), daemon=True).start()
+    #threading.Thread(target=forward_output, args=(worker_process.stdout, "OUT"), daemon=True).start()
     threading.Thread(target=forward_output, args=(worker_process.stderr, "ERR"), daemon=True).start()
     
     # Wait a bit to check if worker started successfully

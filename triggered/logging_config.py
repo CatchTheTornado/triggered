@@ -41,7 +41,7 @@ def log_result_details(result: Any):
     """Log result details with Rich formatting."""
     if result:
         # Log to file
-        logger.info(f"Result details: {json.dumps(result, indent=2)}")
+        logger.debug(f"Result details: {json.dumps(result, indent=2)}")
 
 def log_action_result(action_name: str, result: Any = None, error: str = None):
     """Log a formatted action result message."""
