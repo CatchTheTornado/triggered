@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import sys
+import socket
+from pathlib import Path
 
 from celery import Celery
 from celery.signals import (
@@ -17,12 +19,16 @@ from .core import TriggerAction, TriggerContext
 from .registry import get_action
 from .logging_config import log_action_start, log_action_result, log_result_details, logger, setup_logging
 
-# Allow opting out of external message broker.  If the env var TRIGGERED_BROKER_URL is
-# unset, fall back to the in-process ``memory://`` broker so Redis is optional.
+# Create data directory if it doesn't exist
+data_dir = Path(os.getenv("TRIGGERED_DATA_DIR", "data"))
+data_dir.mkdir(parents=True, exist_ok=True)
 
-broker_url = os.getenv("TRIGGERED_BROKER_URL", "memory://")
-# For small local installs the RPC backend works without extra services.
-backend_url = os.getenv("TRIGGERED_BACKEND_URL", "rpc://")
+# Use SQLite as broker and backend
+broker_url = f"sqla+sqlite:///{data_dir}/celery.sqlite"
+backend_url = f"db+sqlite:///{data_dir}/celery_results.sqlite"
+
+# Get hostname for worker identification
+hostname = socket.gethostname()
 
 app = Celery(
     "triggered",
@@ -66,13 +72,23 @@ app.conf.update(
     worker_max_tasks_per_child=1,  # Restart worker after each task
     worker_send_task_events=True,  # Enable task events
     task_send_sent_event=True,  # Enable sent events
+    worker_hostname=f'triggered@{hostname}',  # Set explicit hostname
+    broker_connection_retry=True,
+    broker_connection_retry_on_startup=True,
+    broker_connection_max_retries=10,
+    task_ignore_result=False,  # Always store task results
+    task_store_errors_even_if_ignored=True,  # Store errors even if result is ignored
+    sqlalchemy_engine_options={
+        'pool_pre_ping': True,
+        'pool_recycle': 3600,
+    }
 )
 
 @worker_process_init.connect
 def setup_worker_logging(**kwargs):
     """Set up logging for each worker process."""
     setup_logging()
-    logger.info("Celery worker process initialized")
+    logger.info(f"Celery worker process initialized on {hostname}")
 
 @before_task_publish.connect
 def before_task_publish_handler(sender=None, headers=None, **kwargs):
@@ -99,7 +115,7 @@ def task_failure_handler(sender=None, exception=None, **kwargs):
     """Log when a task fails."""
     logger.error(f"Task failed: {sender.name} (ID: {sender.request.id}) - {str(exception)}", exc_info=True)
 
-@app.task(name="triggered.execute_action", bind=True, queue='triggered')
+@app.task(name="triggered.execute_action", bind=True, queue='triggered', max_retries=3)
 def execute_action(self, ta_dict: dict, ctx_dict: dict):  # noqa: D401
     """Celery task that instantiates and executes an Action."""
     # Set up logging for the Celery worker
@@ -121,4 +137,6 @@ def execute_action(self, ta_dict: dict, ctx_dict: dict):  # noqa: D401
         return result
     except Exception as e:
         logger.error(f"Action execution failed (Task ID: {self.request.id}): {str(e)}", exc_info=True)
-        raise 
+        # Retry the task with exponential backoff
+        retry_in = 2 ** self.request.retries  # Exponential backoff
+        self.retry(exc=e, countdown=retry_in) 

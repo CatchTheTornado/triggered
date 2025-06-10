@@ -5,6 +5,8 @@ import os
 import signal
 import subprocess
 import sys
+import time
+import socket
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -177,15 +179,44 @@ class RuntimeManager:
 runtime = RuntimeManager()
 
 
+def check_sqlite_connection():
+    """Check if SQLite database is accessible."""
+    try:
+        data_dir = Path(os.getenv("TRIGGERED_DATA_DIR", "data"))
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Try to create a test connection
+        import sqlite3
+        test_db = data_dir / "test.sqlite"
+        conn = sqlite3.connect(str(test_db))
+        conn.close()
+        test_db.unlink()  # Clean up test file
+        logger.info("SQLite connection successful")
+        return True
+    except Exception as e:
+        logger.error(f"SQLite connection failed: {str(e)}")
+        return False
+
+
 def start_celery_worker():
     """Start the Celery worker in a separate process."""
     global worker_process
+    
+    # Check SQLite connection
+    if not check_sqlite_connection():
+        logger.error("SQLite not available, cannot start worker")
+        raise RuntimeError("SQLite not available")
     
     # Get the path to the current Python interpreter
     python_executable = sys.executable
     
     # Get the path to the current module
     module_path = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(module_path)
+    
+    # Add the parent directory to PYTHONPATH
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{parent_dir}:{env.get('PYTHONPATH', '')}"
     
     # Construct the command to start the Celery worker
     cmd = [
@@ -193,7 +224,7 @@ def start_celery_worker():
         "-m",
         "celery",
         "-A",
-        f"{os.path.basename(module_path)}.queue",
+        "triggered.queue",  # Use the full module path
         "worker",
         "--loglevel=INFO",
         "--concurrency=1",
@@ -201,7 +232,14 @@ def start_celery_worker():
         "-Q",
         "triggered",  # Explicitly specify the queue
         "--hostname",
-        "triggered@%h"  # Give the worker a unique hostname
+        f"triggered@{socket.gethostname()}",  # Use actual hostname
+        "--without-gossip",  # Disable gossip for single worker
+        "--without-mingle",  # Disable mingle for single worker
+        "--without-heartbeat",  # Disable heartbeat for single worker
+        "--events",  # Enable events for monitoring
+        "--max-tasks-per-child=1",  # Restart worker after each task
+        "--prefetch-multiplier=1",  # Process one task at a time
+        "--max-memory-per-child=512000"  # Restart worker if memory exceeds 512MB
     ]
     
     # Start the worker process
@@ -211,7 +249,9 @@ def start_celery_worker():
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
-        universal_newlines=True
+        universal_newlines=True,
+        env=env,
+        cwd=parent_dir  # Set working directory to parent directory
     )
     
     # Start threads to forward worker output
@@ -223,7 +263,23 @@ def start_celery_worker():
     threading.Thread(target=forward_output, args=(worker_process.stdout, "OUT"), daemon=True).start()
     threading.Thread(target=forward_output, args=(worker_process.stderr, "ERR"), daemon=True).start()
     
-    return worker_process
+    # Wait a bit to check if worker started successfully
+    try:
+        # Check if process is still running after a short delay
+        time.sleep(2)
+        if worker_process.poll() is not None:
+            # Process has terminated, get the error output
+            _, stderr = worker_process.communicate()
+            raise RuntimeError(f"Celery worker failed to start: {stderr}")
+        
+        logger.info("Celery worker started successfully")
+        return worker_process
+    except Exception as e:
+        logger.error(f"Failed to start Celery worker: {str(e)}")
+        if worker_process:
+            worker_process.terminate()
+            worker_process = None
+        raise
 
 
 def stop_celery_worker():
@@ -231,26 +287,34 @@ def stop_celery_worker():
     global worker_process
     if worker_process is not None:
         logger.info("Stopping Celery worker...")
-        # Send SIGTERM to the worker process
-        worker_process.terminate()
         try:
-            # Wait for the process to terminate
-            worker_process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            # If it doesn't terminate, force kill it
-            logger.warning("Worker process did not terminate gracefully, forcing kill...")
-            worker_process.kill()
-            worker_process.wait()
-        worker_process = None
-        logger.info("Celery worker stopped")
+            # Send SIGTERM to the worker process
+            worker_process.terminate()
+            try:
+                # Wait for the process to terminate
+                worker_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # If it doesn't terminate, force kill it
+                logger.warning("Worker process did not terminate gracefully, forcing kill...")
+                worker_process.kill()
+                worker_process.wait()
+        except Exception as e:
+            logger.error(f"Error stopping Celery worker: {str(e)}")
+        finally:
+            worker_process = None
+            logger.info("Celery worker stopped")
 
 
 @app.on_event("startup")
 async def on_startup():
     # Start the Celery worker if enabled
     if START_WORKER:
-        worker_process = start_celery_worker()
-        logger.info("Started Celery worker")
+        try:
+            worker_process = start_celery_worker()
+            logger.info("Started Celery worker")
+        except Exception as e:
+            logger.error(f"Failed to start Celery worker: {str(e)}")
+            raise
     else:
         logger.info("Celery worker disabled - assuming it's running externally")
     
