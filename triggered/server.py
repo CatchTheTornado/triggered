@@ -2,8 +2,11 @@ import asyncio
 import json
 import logging
 import os
+import signal
+import subprocess
+import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 try:
@@ -25,12 +28,15 @@ except ImportError:  # pragma: no cover
     BatchSpanProcessor = ConsoleSpanExporter = None  # type: ignore
 
 from .core import TriggerAction
-from .queue import execute_action
+from .queue import app as celery_app
 from .registry import get_trigger
 from .logging_config import logger
 
 TRIGGER_ACTIONS_DIR = Path(os.getenv("TRIGGERED_TRIGGER_ACTIONS_PATH", "trigger_actions"))
 TRIGGER_ACTIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Environment variable to control whether to start the Celery worker
+START_WORKER = os.getenv("TRIGGERED_START_WORKER", "true").lower() == "true"
 
 app = FastAPI(title="Triggered Runtime Engine")
 
@@ -51,6 +57,9 @@ else:
 
 # In-memory store of recent events
 RECENT_EVENTS: List[Dict] = []
+
+# Store the worker process
+worker_process: Optional[subprocess.Popen] = None
 
 
 class RuntimeManager:
@@ -161,9 +170,82 @@ class RuntimeManager:
 runtime = RuntimeManager()
 
 
+def start_celery_worker():
+    """Start the Celery worker in a separate process."""
+    global worker_process
+    
+    # Get the path to the current Python interpreter
+    python_executable = sys.executable
+    
+    # Get the path to the current module
+    module_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # Construct the command to start the Celery worker
+    cmd = [
+        python_executable,
+        "-m",
+        "celery",
+        "-A",
+        f"{os.path.basename(module_path)}.queue",
+        "worker",
+        "--loglevel=INFO",
+        "--concurrency=1",
+        "--pool=solo"  # Use solo pool for better logging
+    ]
+    
+    # Start the worker process
+    worker_process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+        universal_newlines=True
+    )
+    
+    # Start threads to forward worker output
+    def forward_output(pipe, prefix):
+        for line in pipe:
+            logger.info(f"[Celery Worker] {line.strip()}")
+    
+    import threading
+    threading.Thread(target=forward_output, args=(worker_process.stdout, "OUT"), daemon=True).start()
+    threading.Thread(target=forward_output, args=(worker_process.stderr, "ERR"), daemon=True).start()
+    
+    return worker_process
+
+
+def stop_celery_worker():
+    """Stop the Celery worker process."""
+    global worker_process
+    if worker_process is not None:
+        logger.info("Stopping Celery worker...")
+        # Send SIGTERM to the worker process
+        worker_process.terminate()
+        try:
+            # Wait for the process to terminate
+            worker_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            # If it doesn't terminate, force kill it
+            logger.warning("Worker process did not terminate gracefully, forcing kill...")
+            worker_process.kill()
+            worker_process.wait()
+        worker_process = None
+        logger.info("Celery worker stopped")
+
+
 @app.on_event("startup")
 async def on_startup():
+    # Start the Celery worker if enabled
+    if START_WORKER:
+        worker_process = start_celery_worker()
+        logger.info("Started Celery worker")
+    else:
+        logger.info("Celery worker disabled - assuming it's running externally")
+    
+    # Start the runtime manager
     await runtime.start()
+    logger.info("Started runtime manager")
 
 
 @app.post("/trigger_actions")
@@ -193,4 +275,17 @@ async def get_trigger_info(trigger_id: str, auth: str):
 
 @app.get("/events")
 async def list_events(limit: int = 50):
-    return RECENT_EVENTS[-limit:] 
+    return RECENT_EVENTS[-limit:]
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    # Stop the Celery worker if we started it
+    if START_WORKER:
+        stop_celery_worker()
+    
+    # Stop the runtime manager
+    for task in runtime._watcher_tasks:
+        task.cancel()
+    await asyncio.gather(*runtime._watcher_tasks, return_exceptions=True)
+    logger.info("Runtime manager stopped") 
