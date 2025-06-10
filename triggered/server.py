@@ -142,18 +142,28 @@ class RuntimeManager:
             )
             # Log that we're dispatching the action
             logger.info(f"Dispatching action for trigger-action {ta.filename or ta.id}")
-            # Execute the action asynchronously
-            try:
-                task = execute_action.apply_async(
-                    args=[
-                        ta.model_dump(mode="json"),
-                        ctx.model_dump(mode="json"),
-                    ],
-                    queue='triggered'
-                )
-                logger.debug(f"Action task scheduled with ID: {task.id}")
-            except Exception as e:
-                logger.error(f"Failed to schedule action task: {str(e)}", exc_info=True)
+            
+            # Execute the action based on the execution mode
+            if START_WORKER:
+                # Use Celery for task execution
+                try:
+                    task = execute_action.apply_async(
+                        args=[
+                            ta.model_dump(mode="json"),
+                            ctx.model_dump(mode="json"),
+                        ],
+                        queue='triggered'
+                    )
+                    logger.debug(f"Action task scheduled with ID: {task.id}")
+                except Exception as e:
+                    logger.error(f"Failed to schedule action task: {str(e)}", exc_info=True)
+            else:
+                # Execute action directly in the same process
+                try:
+                    result = await ta.execute_action(ctx)
+                    logger.info(f"Action executed successfully: {result}")
+                except Exception as e:
+                    logger.error(f"Failed to execute action: {str(e)}", exc_info=True)
 
     def add_trigger_action(self, ta: TriggerAction):
         file_path = TRIGGER_ACTIONS_DIR / f"{ta.id}.json"

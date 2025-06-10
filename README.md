@@ -1186,3 +1186,46 @@ Common status codes:
 - 400: Bad Request
 - 404: Not Found
 - 500: Internal Server Error
+```
+
+## Running the Server
+
+Triggered can be run in two different modes:
+
+### Standalone Mode (Default)
+This mode runs everything in a single process, which is simpler to set up and manage:
+
+```bash
+triggered server
+```
+
+This is the recommended mode for most use cases, especially during development.
+
+### Distributed Mode with Celery
+For production environments or when you need better scalability, you can run the server with a separate Celery worker:
+
+Terminal 1 (Server):
+```bash
+triggered server
+```
+
+Terminal 2 (Worker):
+```bash
+triggered worker
+```
+
+The distributed mode requires a message broker (SQLite by default, but can be configured to use Redis or RabbitMQ).
+
+### Configuration
+You can configure the execution mode using environment variables:
+
+- `TRIGGERED_START_WORKER`: Set to "true" to enable Celery worker mode, "false" for standalone mode (default: "false")
+- `TRIGGERED_BROKER_URL`: Message broker URL for Celery (default: SQLite)
+- `TRIGGERED_BACKEND_URL`: Result backend URL for Celery (default: SQLite)
+
+Example with Redis:
+```bash
+export TRIGGERED_BROKER_URL="redis://localhost:6379/0"
+export TRIGGERED_BACKEND_URL="redis://localhost:6379/0"
+export TRIGGERED_START_WORKER="true"
+```

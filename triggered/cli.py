@@ -623,5 +623,55 @@ def check_components(
     display_loaded_trigger_actions()
 
 
+@app.command()
+def worker():
+    """Start the Celery worker for processing trigger actions."""
+    from .queue import app as celery_app
+    from .logging_config import setup_logging
+    
+    setup_logging()
+    logger.info("Starting Celery worker...")
+    
+    # Start the Celery worker
+    celery_app.worker_main(['worker', '--loglevel=INFO', '--pool=solo', '-Q', 'triggered'])
+
+@app.command()
+def server():
+    """Start the Triggered server in standalone mode (without Celery)."""
+    import uvicorn
+    from .logging_config import setup_logging
+    
+    setup_logging()
+    logger.info("Starting Triggered server in standalone mode...")
+    
+    # Set environment variable to disable Celery worker
+    os.environ["TRIGGERED_START_WORKER"] = "false"
+    
+    # Start the server
+    uvicorn.run(
+        "triggered.server:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
+
+@app.command()
+def start():
+    """Start both the server and Celery worker (requires two terminal windows)."""
+    logger.info("""
+To start Triggered in full mode with Celery worker, you need to run two commands in separate terminals:
+
+Terminal 1:
+    triggered server
+
+Terminal 2:
+    triggered worker
+
+Alternatively, you can run just the server in standalone mode:
+    triggered server
+    """)
+
+
 if __name__ == "__main__":  # pragma: no cover
     app() 
