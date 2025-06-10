@@ -73,6 +73,7 @@ class RuntimeManager:
                 ta = TriggerAction.model_validate(
                     data,
                 )
+                ta.filename = file.name  # Store the filename
                 self.trigger_actions.append(ta)
             except Exception as exc:  # noqa: WPS420
                 logger.error("Failed to load trigger file %s: %s", file, exc)
@@ -89,6 +90,7 @@ class RuntimeManager:
                     )
                     # Only add if not already loaded from TRIGGER_ACTIONS_DIR
                     if not any(existing.id == ta.id for existing in self.trigger_actions):
+                        ta.filename = file.name  # Store the filename
                         self.trigger_actions.append(ta)
                 except Exception as exc:  # noqa: WPS420
                     logger.error("Failed to load example file %s: %s", file, exc)
@@ -127,6 +129,9 @@ class RuntimeManager:
                     "time": ctx.fired_at.isoformat(),
                 },
             )
+            # Log that we're dispatching the action
+            logger.info(f"Dispatching action for trigger-action {ta.filename or ta.id}")
+            # Execute the action asynchronously
             execute_action.delay(
                 ta.model_dump(mode="json"),
                 ctx.model_dump(mode="json"),
@@ -140,6 +145,7 @@ class RuntimeManager:
                 indent=2,
             ),
         )
+        ta.filename = file_path.name  # Store the filename
         self.trigger_actions.append(ta)
         # Start watcher for this trigger
         trigger_cls = get_trigger(ta.trigger.type)

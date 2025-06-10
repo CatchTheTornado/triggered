@@ -185,11 +185,12 @@ class ActionDefinition(BaseModel):
 class TriggerAction(BaseModel):
     """Configuration entity representing a Trigger + Action pair."""
 
-    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
-    auth_key: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    auth_key: str = Field(default_factory=lambda: str(uuid.uuid4()))
     trigger: TriggerDefinition
     action: ActionDefinition
     params: Dict[str, Any] = Field(default_factory=dict)
+    filename: Optional[str] = None  # Store the filename of the JSON file
 
     def validate(self) -> tuple[bool, str | None]:
         """Validate the entire configuration."""
