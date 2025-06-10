@@ -222,10 +222,8 @@ class TriggerAction(BaseModel):
             The result of the action execution
         """
         from .registry import get_action
-        from .logging_config import log_action_start, log_action_result, log_result_details
-        import logging
+        from .logging_config import log_action_start, log_action_result, log_result_details, logger
 
-        logger = logging.getLogger(__name__)
         logger.info(f"Executing trigger-action {self.id} ({self.trigger.type} -> {self.action.type})")
 
         action_cls = get_action(self.action.type)

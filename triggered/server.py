@@ -27,8 +27,7 @@ except ImportError:  # pragma: no cover
 from .core import TriggerAction
 from .queue import execute_action
 from .registry import get_trigger
-
-logger = logging.getLogger(__name__)
+from .logging_config import logger
 
 TRIGGER_ACTIONS_DIR = Path(os.getenv("TRIGGERED_TRIGGER_ACTIONS_PATH", "trigger_actions"))
 TRIGGER_ACTIONS_DIR.mkdir(parents=True, exist_ok=True)

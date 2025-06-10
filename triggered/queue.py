@@ -6,7 +6,7 @@ from celery import Celery
 
 from .core import TriggerAction, TriggerContext
 from .registry import get_action
-from .logging_config import log_action_start, log_action_result, log_result_details
+from .logging_config import log_action_start, log_action_result, log_result_details, logger
 
 logger = logging.getLogger(__name__)
 

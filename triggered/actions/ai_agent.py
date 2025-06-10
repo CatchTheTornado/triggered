@@ -4,6 +4,7 @@ from ..core import Action, TriggerContext
 from ..models import get_model
 from ..registry import register_action
 from ..config_schema import ConfigSchema, ConfigField
+from ..logging_config import logger
 
 logger = logging.getLogger(__name__)
 

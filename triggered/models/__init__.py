@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List, Union
 import os
 from litellm import completion, ModelResponse
 from ..tools import TOOL_REGISTRY
+from ..logging_config import logger
 import json
 
 logger = logging.getLogger(__name__)

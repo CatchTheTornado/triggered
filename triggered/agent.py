@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .models import get_model
 from .tools import get_tools, load_tools_from_module
+from .logging_config import logger
 
 logger = logging.getLogger(__name__)
 

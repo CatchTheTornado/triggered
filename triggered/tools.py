@@ -8,7 +8,7 @@ import inspect
 import logging
 import random
 
-logger = logging.getLogger(__name__)
+from .logging_config import logger
 
 
 class ToolInput(BaseModel):

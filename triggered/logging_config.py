@@ -122,6 +122,13 @@ def setup_logging():
     # Configure specific loggers
     loggers = {
         "triggered": logging.INFO,
+        "triggered.models": logging.INFO,
+        "triggered.tools": logging.INFO,
+        "triggered.actions": logging.INFO,
+        "triggered.triggers": logging.INFO,
+        "triggered.server": logging.INFO,
+        "triggered.queue": logging.INFO,
+        "triggered.agent": logging.INFO,
         "uvicorn": logging.INFO,
         "fastapi": logging.INFO,
         "LiteLLM": logging.ERROR,  # Always set LiteLLM to ERROR
@@ -130,7 +137,7 @@ def setup_logging():
     for logger_name, level in loggers.items():
         logger = logging.getLogger(logger_name)
         logger.setLevel(level)
-        logger.propagate = True
+        logger.propagate = True  # Ensure logs propagate to parent loggers
 
     # Set initial log level from environment
     set_log_level(log_level)
