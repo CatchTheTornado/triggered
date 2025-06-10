@@ -6,9 +6,6 @@ from ..registry import register_action
 from ..config_schema import ConfigSchema, ConfigField
 from ..logging_config import logger
 
-logger = logging.getLogger(__name__)
-
-
 @register_action("ai_agent")
 class AIAgentAction(Action):
     """Action that invokes an AI model with given prompt and tools."""
