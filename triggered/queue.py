@@ -61,7 +61,11 @@ app.conf.update(
             'queue': 'triggered',
             'routing_key': 'triggered'
         }
-    }
+    },
+    worker_prefetch_multiplier=1,  # Process one task at a time
+    worker_max_tasks_per_child=1,  # Restart worker after each task
+    worker_send_task_events=True,  # Enable task events
+    task_send_sent_event=True,  # Enable sent events
 )
 
 @worker_process_init.connect

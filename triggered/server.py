@@ -284,9 +284,9 @@ async def get_trigger_info(trigger_id: str, auth: str):
     raise HTTPException(status_code=404, detail="Trigger not found")
 
 
-@app.get("/events")
-async def list_events(limit: int = 50):
-    return RECENT_EVENTS[-limit:]
+# @app.get("/events")
+# async def list_events(limit: int = 50):
+#     return RECENT_EVENTS[-limit:]
 
 
 @app.on_event("shutdown")
