@@ -28,7 +28,7 @@ except ImportError:  # pragma: no cover
     BatchSpanProcessor = ConsoleSpanExporter = None  # type: ignore
 
 from .core import TriggerAction
-from .queue import app as celery_app
+from .queue import app as celery_app, execute_action
 from .registry import get_trigger
 from .logging_config import logger
 
@@ -141,10 +141,17 @@ class RuntimeManager:
             # Log that we're dispatching the action
             logger.info(f"Dispatching action for trigger-action {ta.filename or ta.id}")
             # Execute the action asynchronously
-            execute_action.delay(
-                ta.model_dump(mode="json"),
-                ctx.model_dump(mode="json"),
-            )
+            try:
+                task = execute_action.apply_async(
+                    args=[
+                        ta.model_dump(mode="json"),
+                        ctx.model_dump(mode="json"),
+                    ],
+                    queue='triggered'
+                )
+                logger.info(f"Action task scheduled with ID: {task.id}")
+            except Exception as e:
+                logger.error(f"Failed to schedule action task: {str(e)}", exc_info=True)
 
     def add_trigger_action(self, ta: TriggerAction):
         file_path = TRIGGER_ACTIONS_DIR / f"{ta.id}.json"
@@ -190,7 +197,11 @@ def start_celery_worker():
         "worker",
         "--loglevel=INFO",
         "--concurrency=1",
-        "--pool=solo"  # Use solo pool for better logging
+        "--pool=solo",
+        "-Q",
+        "triggered",  # Explicitly specify the queue
+        "--hostname",
+        "triggered@%h"  # Give the worker a unique hostname
     ]
     
     # Start the worker process
