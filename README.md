@@ -1,6 +1,6 @@
 # 🚀 Triggered
 
-A Python CLI + Server for creating and managing AI-powered triggers and actions. **Crontab on steroids**. Super easy to use and manage ⚡️
+**Crontab on steroids**. Use AI prompts and tools, time-tables, file-system watchers to trigger actions you like, when it's suitable. Super easy to use and manage ⚡️
 
 
 
