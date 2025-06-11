@@ -403,6 +403,33 @@ The application uses a comprehensive logging system:
    }
    ```
 
+3. AI Action (`ai`)
+   - Uses language models to generate responses
+   - Supports variable substitution in prompts
+   - Example config:
+   ```json
+   {
+     "action": {
+       "type": "ai",
+       "config": {
+         "name": "my-ai-action",
+         "prompt": "Analyze the file '${data.filename}' in ${ENV_NAME} environment. The file was ${data.event} and should be processed with priority ${priority}.",
+         "model": "openai/gpt-4",  // optional, defaults to ollama/llama3.1
+         "api_base": "https://api.openai.com/v1",  // optional, defaults to http://localhost:11434
+         "tools": ["tool1", "tool2"]  // optional, list of tools
+       }
+     },
+     "params": {
+       "priority": "high"
+     }
+   }
+   ```
+
+   The prompt supports variable substitution from:
+   - Environment variables (e.g., `${ENV_NAME}`)
+   - Global parameters (e.g., `${priority}`)
+   - Trigger data (e.g., `${filename}`, `${event}`)
+
 #### Tools
 
 1. Random Number Tool
@@ -622,6 +649,60 @@ The configuration is defined in JSON format with the following structure:
 }
 ```
 
+#### Variable Substitution in Prompts
+
+In AI actions and triggers, you can use variable substitution in prompts using the `${var}` syntax. Variables can come from three sources:
+
+1. Environment Variables:
+```json
+{
+  "action": {
+    "type": "ai",
+    "config": {
+      "prompt": "Check if the API key ${API_KEY} is valid"
+    }
+  }
+}
+```
+
+2. Global Parameters:
+```json
+{
+  "action": {
+    "type": "ai",
+    "config": {
+      "prompt": "Analyze the file ${filename}"
+    }
+  },
+  "params": {
+    "filename": "example.txt"
+  }
+}
+```
+
+3. Trigger Data:
+```json
+{
+  "trigger": {
+    "type": "folder-monitor",
+    "config": {
+      "path": "/tmp"
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "prompt": "Based on the filename '${data.filename}', analyze what this file might be used for. The file was ${data.event} at path ${data.filepath}."
+    }
+  }
+}
+```
+
+Variables are resolved in the following order:
+1. Environment variables (e.g., `${API_KEY}`)
+2. Global parameters from the config (e.g., `${filename}`)
+3. Trigger data (e.g., `${data.filename}`)
+
 #### Trigger Configuration
 
 Each trigger type has its own configuration format:
@@ -633,7 +714,7 @@ Each trigger type has its own configuration format:
     "type": "ai",
     "config": {
       "name": "my-ai-trigger",
-      "prompt": "Your AI prompt here",
+      "prompt": "Your AI prompt here (supports ${var} substitution)",
       "model": "ollama/llama3.1",  // optional, defaults to ollama/llama3.1
       "api_base": "http://localhost:11434",  // optional, defaults to http://localhost:11434
       "interval": 60,  // optional, check interval in seconds
@@ -1346,7 +1427,7 @@ AI triggers and actions support variable substitution in prompts using the `${va
   "action": {
     "type": "ai",
     "config": {
-      "prompt": "Based on the filename '${filename}', analyze what this file might be used for. The file was ${event}."
+      "prompt": "Based on the filename '${data.filename}', analyze what this file might be used for. The file was ${data.event} at path ${data.filepath}."
     }
   }
 }
@@ -1355,7 +1436,7 @@ AI triggers and actions support variable substitution in prompts using the `${va
 Variables are resolved in the following order:
 1. Environment variables (e.g., `${API_KEY}`)
 2. Global parameters from the config (e.g., `${filename}`)
-3. Trigger data passed to the action (e.g., `${event}`)
+3. Trigger data passed to the action (e.g., `${filename}`)
 
 Example with all types of variables:
 ```json
@@ -1369,7 +1450,7 @@ Example with all types of variables:
   "action": {
     "type": "ai",
     "config": {
-      "prompt": "Analyze file '${filename}' in ${ENV_NAME} environment. The file was ${event} and should be processed with priority ${priority}."
+      "prompt": "Analyze file '${filename}' in ${ENV_NAME} environment. The file was ${data.event} and should be processed with priority ${priority}."
     }
   },
   "params": {
