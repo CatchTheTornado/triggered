@@ -14,7 +14,7 @@ class AIConfig(BaseModel):
     """Configuration for AI action."""
     name: str
     prompt: str
-    model: str = "local"
+    model: str = "openai/gpt-4o"
     api_base: str = ""
     tools: list[str] = []
     custom_tools_path: Optional[str] = None
@@ -44,7 +44,7 @@ class AIAction(Action):
                 name="model",
                 type="string",
                 description="Model to use",
-                default="local",
+                default="openai/gpt-4o",
                 required=False
             ),
             ConfigField(
@@ -86,9 +86,9 @@ class AIAction(Action):
             self.config_model.prompt,
             tools=self.config_model.tools
         )
-        logger.info("AI Agent response: %s", response)
+        logger.debug("AI Agent response: %s", response)
 
         # Store the result in the context for downstream actions
-        ctx.data["result"] = response
+        return response
 
         # Optionally pass result downstream? Could set ctx.data["result"] 

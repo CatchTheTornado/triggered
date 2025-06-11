@@ -13,7 +13,17 @@ logger = logging.getLogger(__name__)
 
 @register_trigger("cron")
 class CronTrigger(Trigger):
-    """Trigger that fires according to a crontab expression."""
+    """Trigger that fires according to a crontab expression.
+    
+    Supports both standard 5-field (minute-based) and extended 6-field (second-based) cron expressions:
+    - 5 fields: "* * * * *" (minute hour day month weekday)
+    - 6 fields: "* * * * * *" (second minute hour day month weekday)
+    
+    For second-based scheduling, use the 6-field format with seconds as the first field.
+    Example: "*/20 * * * * *" runs every 20 seconds.
+    
+    See https://pypi.org/project/croniter/#about-second-repeats for more details.
+    """
 
     @classmethod
     def get_config_schema(cls) -> 'ConfigSchema':

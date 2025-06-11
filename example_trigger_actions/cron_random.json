@@ -10,8 +10,9 @@
   "action": {
     "type": "ai",
     "config": {
-      "name": "random-number-generator",
-      "prompt": "Generate a random number between 1 and 100 using the random_number tool. Then, if the number is greater than 50, trigger the shell command to announce it.",
+      "name": "random-number",
+      "prompt": "Generate a random number between 1 and 100",
+      "model": "openai/gpt-4o",
       "tools": ["random_number"]
     }
   },

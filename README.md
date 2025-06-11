@@ -1282,3 +1282,25 @@ triggered worker
 ```
 
 Each command supports the `--log-level` option for controlling logging verbosity.
+
+#### Cron Expressions
+
+The cron trigger supports both standard 5-field (minute-based) and extended 6-field (second-based) cron expressions:
+
+1. Standard 5-field format (minute-based):
+```
+* * * * *  (minute hour day month weekday)
+```
+
+2. Extended 6-field format (second-based):
+```
+* * * * * *  (second minute hour day month weekday)
+```
+
+Examples:
+- `*/20 * * * * *` - Run every 20 seconds
+- `0 * * * * *` - Run at the start of every minute
+- `0 0 * * * *` - Run at the start of every hour
+- `0 0 0 * * *` - Run at midnight every day
+
+For more details about second-based scheduling, see [croniter documentation](https://pypi.org/project/croniter/#about-second-repeats).

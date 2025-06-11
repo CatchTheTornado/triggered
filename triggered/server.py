@@ -161,7 +161,7 @@ class RuntimeManager:
                 # Execute action directly in the same process
                 try:
                     result = await ta.execute_action(ctx)
-                    logger.info(f"Action executed successfully: {result}")
+                    logger.debug(f"Action executed successfully: {result}")
                 except Exception as e:
                     logger.error(f"Failed to execute action: {str(e)}", exc_info=True)
 
