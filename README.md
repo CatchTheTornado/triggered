@@ -179,6 +179,10 @@ pytest
 - [ ] Web API Security improvements
 - [ ] Simple Web GUI for displaying the running `trigger_actions`
 - [ ] Simple Web GUI for adding `trigger_actions`
+- [ ] Server reloading on new / edited `trigger_actions`
+- [ ] Support multiple modules (comma separated) to `TRIGGERED_TRIGGERS_MODULE`, `TRIGGERED_ACTIONS_MODULE`, `TRIGGERED_TOOLS_MODULE`
+- [ ] Publish the project as a Python package and test this distribution channel
+- [ ] Increase the test coverage - by adding unit tests for all triggers, actions, server and CLI
 
 ## Documentation
 
