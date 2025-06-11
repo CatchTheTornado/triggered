@@ -1,0 +1,21 @@
+{
+  "trigger": {
+    "type": "folder-monitor",
+    "config": {
+      "name": "tmp-file-analyzer",
+      "path": "/tmp",
+      "patterns": ["*"],
+      "events": ["created", "modified"],
+      "recursive": false
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "name": "file-analyzer",
+      "prompt": "Based on the filename '${filename}', analyze what this file might be used for. Consider common file patterns, extensions, and naming conventions. Provide a brief explanation of the likely purpose of this file.",
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1"
+    }
+  }
+} 

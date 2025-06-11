@@ -8,7 +8,7 @@ from ..registry import register_trigger
 from ..config_schema import ConfigSchema, ConfigField
 
 
-@register_trigger("folder")
+@register_trigger("folder-monitor")
 class FolderMonitorTrigger(Trigger):
     """Trigger that fires whenever a file changes in the specified folder.
 
@@ -34,6 +34,27 @@ class FolderMonitorTrigger(Trigger):
                 required=True
             ),
             ConfigField(
+                name="patterns",
+                type="array",
+                description="File patterns to monitor (e.g. ['*.txt', '*.log'])",
+                default=["*"],
+                required=False
+            ),
+            ConfigField(
+                name="events",
+                type="array",
+                description="Events to monitor (created, modified, deleted)",
+                default=["created", "modified", "deleted"],
+                required=False
+            ),
+            ConfigField(
+                name="recursive",
+                type="boolean",
+                description="Whether to monitor subdirectories",
+                default=False,
+                required=False
+            ),
+            ConfigField(
                 name="interval",
                 type="integer",
                 description="Polling interval in seconds",
@@ -46,6 +67,9 @@ class FolderMonitorTrigger(Trigger):
         super().__init__(config)
         self.path = Path(config["path"]).expanduser().resolve()
         self.interval = int(config.get("interval", 5))
+        self.patterns = config.get("patterns", ["*"])
+        self.events = config.get("events", ["created", "modified", "deleted"])
+        self.recursive = config.get("recursive", False)
         self._snapshot = self._hash_dir()
 
     def _hash_dir(self):
@@ -54,7 +78,10 @@ class FolderMonitorTrigger(Trigger):
         for root, _, files in os.walk(self.path):
             for f in files:
                 fp = Path(root) / f
-                mapping[str(fp)] = fp.stat().st_mtime
+                if not self.recursive and fp.parent != self.path:
+                    continue
+                if any(fp.match(pattern) for pattern in self.patterns):
+                    mapping[str(fp)] = fp.stat().st_mtime
         return mapping
 
     async def watch(self, queue_put):
@@ -62,17 +89,36 @@ class FolderMonitorTrigger(Trigger):
             await asyncio.sleep(self.interval)
             new_snapshot = self._hash_dir()
             if new_snapshot != self._snapshot:
-                diff_files = [
-                    k
-                    for k in new_snapshot
-                    if self._snapshot.get(k) != new_snapshot[k]
-                ]
+                # Find changed files
+                changed_files = []
+                for filepath, mtime in new_snapshot.items():
+                    old_mtime = self._snapshot.get(filepath)
+                    if old_mtime is None:
+                        changed_files.append((filepath, "created"))
+                    elif old_mtime != mtime:
+                        changed_files.append((filepath, "modified"))
+                
+                # Find deleted files
+                for filepath in self._snapshot:
+                    if filepath not in new_snapshot:
+                        changed_files.append((filepath, "deleted"))
+                
+                # Update snapshot
                 self._snapshot = new_snapshot
-                ctx = TriggerContext(
-                    trigger_name=self.name,
-                    data={"files_changed": diff_files},
-                )
-                await queue_put(ctx)
+                
+                # Create context for each changed file
+                for filepath, event in changed_files:
+                    if event in self.events:
+                        filename = Path(filepath).name
+                        ctx = TriggerContext(
+                            trigger_name=self.name,
+                            data={
+                                "filename": filename,
+                                "filepath": filepath,
+                                "event": event
+                            },
+                        )
+                        await queue_put(ctx)
 
             ctx = TriggerContext(trigger_name=self.name)
             await queue_put(ctx) 

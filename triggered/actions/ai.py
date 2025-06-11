@@ -3,26 +3,25 @@ from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
 from ..core import Action, TriggerContext
-from ..models import get_model
 from ..registry import register_action
-from ..tools import get_tools, load_tools_from_module
 from ..config_schema import ConfigSchema, ConfigField
-from ..logging_config import logger
+from ..models import get_model
+from ..tools import get_tools, load_tools_from_module
 
+logger = logging.getLogger(__name__)
 
 class AIConfig(BaseModel):
     """Configuration for AI action."""
     name: str
     prompt: str
     model: str = "openai/gpt-4o"
-    api_base: str = ""
-    tools: list[str] = []
+    api_base: str = "https://api.openai.com/v1"
+    tools: list = []
     custom_tools_path: Optional[str] = None
-
 
 @register_action("ai")
 class AIAction(Action):
-    """Action that uses AI to execute tasks."""
+    """Action that uses AI to generate responses."""
 
     @classmethod
     def get_config_schema(cls) -> 'ConfigSchema':
@@ -37,7 +36,7 @@ class AIAction(Action):
             ConfigField(
                 name="prompt",
                 type="string",
-                description="AI prompt",
+                description="AI prompt (can use ${var} for variable substitution)",
                 required=True
             ),
             ConfigField(
@@ -71,24 +70,24 @@ class AIAction(Action):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.config_model = AIConfig(**config)
-        self.model = get_model(
-            model=self.config_model.model,
-            api_base=self.config_model.api_base
-        )
-        self.tools = get_tools(self.config_model.tools)
-        if self.config_model.custom_tools_path:
-            load_tools_from_module(self.config_model.custom_tools_path)
+        self.config = AIConfig(**config)
+        self.model = get_model(model=self.config.model, api_base=self.config.api_base)
+        self.tools = get_tools(self.config.tools)
+        if self.config.custom_tools_path:
+            load_tools_from_module(self.config.custom_tools_path)
 
-    async def execute(self, ctx: TriggerContext) -> None:
-        """Execute the AI action."""
-        response = await self.model.ainvoke(
-            self.config_model.prompt,
-            tools=self.config_model.tools
-        )
-        logger.debug("AI Agent response: %s", response)
+    async def execute(self, ctx: TriggerContext) -> Dict[str, Any]:
+        """Execute the AI action with the given context."""
+        try:
+            # Replace variables in the prompt with context data
+            prompt = self.config.prompt
+            for key, value in ctx.data.items():
+                prompt = prompt.replace(f"${{{key}}}", str(value))
 
-        # Store the result in the context for downstream actions
-        return response
-
-        # Optionally pass result downstream? Could set ctx.data["result"] 
+            # Call the model
+            response = await self.model.ainvoke(prompt, tools=self.config.tools)
+            logger.info(f"AI response: {response}")
+            return {"response": response}
+        except Exception as e:
+            logger.error(f"Error executing AI action: {str(e)}")
+            return {"error": str(e)} 
