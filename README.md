@@ -1,8 +1,6 @@
 # 🚀 Triggered
 
-**Crontab on steroids**. Use AI prompts and tools, time-tables, file-system watchers to trigger actions you like, when it's suitable. Super easy to use and manage ⚡️
-
-
+**Crontab on AI steroids with an API**. Use AI prompts and tools, time-tables, file-system watchers to trigger actions you like, when it's suitable. Super easy to use and manage ⚡️
 
 <div align="center">
   <img src=".readme_assets/0.png" alt="Triggered Hero Image" width="800"/>
@@ -939,10 +937,6 @@ class SearchTool(Tool):
         pass
 ```
 
-## License
-
-MIT License
-
 ## API Documentation
 
 The server provides a RESTful API for managing triggers and actions. Here are the available endpoints with curl examples based on the included example triggers:
@@ -1304,3 +1298,7 @@ Examples:
 - `0 0 0 * * *` - Run at midnight every day
 
 For more details about second-based scheduling, see [croniter documentation](https://pypi.org/project/croniter/#about-second-repeats).
+
+## License
+
+MIT License
