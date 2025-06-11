@@ -3,6 +3,7 @@ from pathlib import Path
 import asyncio
 from typing import Optional, Dict, Any
 import os
+import zoneinfo
 
 from enum import Enum
 import typer
@@ -248,11 +249,56 @@ def interactive_config_from_schema(schema, title: str) -> Dict[str, Any]:
     
     for field in schema.fields:
         if field.type == "string":
-            value = Prompt.ask(
-                field.description,
-                default=str(field.default) if field.default is not None else None,
-                show_default=field.default is not None
-            )
+            if field.name == "timezone":
+                # Get all available timezones
+                timezones = sorted(zoneinfo.available_timezones())
+                # Show common timezones first
+                common_timezones = [
+                    "UTC",
+                    "America/New_York",
+                    "America/Los_Angeles",
+                    "Europe/London",
+                    "Europe/Paris",
+                    "Asia/Tokyo",
+                    "Australia/Sydney"
+                ]
+                # Create a table to display timezones
+                timezone_table = Table(title="Available Timezones", show_header=True, header_style="bold magenta")
+                timezone_table.add_column("Common Timezones", style="cyan")
+                timezone_table.add_column("All Timezones", style="green")
+                
+                # Add common timezones to the first column
+                for tz in common_timezones:
+                    timezone_table.add_row(tz, "")
+                
+                # Add a separator
+                timezone_table.add_row("...", "...")
+                
+                # Add some examples from all timezones
+                for tz in timezones[:5]:
+                    timezone_table.add_row("", tz)
+                
+                console.print(timezone_table)
+                console.print("[yellow]Note: Only showing first 5 timezones. Type to search all available timezones.[/yellow]")
+                
+                value = Prompt.ask(
+                    field.description,
+                    default=field.default,
+                    show_default=True
+                )
+                # Validate the timezone
+                try:
+                    zoneinfo.ZoneInfo(value)
+                except zoneinfo.ZoneInfoNotFoundError:
+                    console.print(f"[red]Invalid timezone: {value}[/red]")
+                    if not Confirm.ask("Would you like to try again?"):
+                        value = field.default
+            else:
+                value = Prompt.ask(
+                    field.description,
+                    default=str(field.default) if field.default is not None else None,
+                    show_default=field.default is not None
+                )
             config[field.name] = value
         elif field.type == "integer":
             value = Prompt.ask(

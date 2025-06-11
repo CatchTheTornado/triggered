@@ -49,6 +49,7 @@ class CronTrigger(Trigger):
         while True:
             now = _dt.datetime.now(self.timezone)
             next_time = self._iter.get_next(_dt.datetime)
+            print(f"Next time: {next_time}")
             delay = (next_time - now).total_seconds()
             if delay > 0:
                 await asyncio.sleep(delay)
