@@ -4,6 +4,7 @@ import asyncio
 from typing import Optional, Dict, Any
 import os
 
+from enum import Enum
 import typer
 import uvicorn
 from rich.console import Console
@@ -431,12 +432,36 @@ def add_trigger(
         )
     )
 
+class ServerMode(str, Enum):
+    standalone = "standalone"
+    distributed = "distributed"
 
 @app.command()
 def start(
-    host: str = "0.0.0.0",  # noqa: WPS110
-    port: int = 8000,
-    reload: bool = False,
+    host: str = typer.Option(
+        "0.0.0.0",
+        "--host",
+        "-h",
+        help="Host to bind the server to"
+    ),
+    port: int = typer.Option(
+        8000,
+        "--port",
+        "-p",
+        help="Port to bind the server to"
+    ),
+    reload: bool = typer.Option(
+        False,
+        "--reload",
+        "-r",
+        help="Enable auto-reload on code changes"
+    ),
+    mode: ServerMode = typer.Option(
+        "standalone",
+        "--mode",
+        "-m",
+        help="Startup mode: 'standalone' (default) or 'distributed' (with Celery worker)"
+    ),
     log_level: str = typer.Option(
         None,
         "--log-level",
@@ -445,22 +470,69 @@ def start(
         callback=log_level_callback,
     ),
 ):
-    """Start the FastAPI server to handle webhook triggers and manage triggers."""
+    """Start the Triggered server with optional Celery worker."""
     print_app_title()
     
-    server_info = Table(title="Server Configuration", show_header=True, header_style="bold magenta")
-    server_info.add_column("Setting", style="cyan")
-    server_info.add_column("Value", style="green")
-    server_info.add_row("Host", host)
-    server_info.add_row("Port", str(port))
-    server_info.add_row("Auto-reload", str(reload))
-    server_info.add_row("Logs directory", str(LOGS_DIR))
-    server_info.add_row("Log level", log_level or os.getenv("TRIGGERED_LOG_LEVEL", "INFO"))
+    # Create a panel for startup information
+    startup_info = Panel(
+        Text.assemble(
+            Text("Triggered Server", style="bold blue"),
+            "\n\n",
+            Text("Server Configuration:", style="bold yellow"),
+            "\n",
+            Text("🌐 Host: ", style="cyan"),
+            Text(host, style="green"),
+            "\n",
+            Text("🔌 Port: ", style="cyan"),
+            Text(str(port), style="green"),
+            "\n",
+            Text("🔄 Auto-reload: ", style="cyan"),
+            Text(str(reload), style="green"),
+            "\n\n",
+            Text("Available Modes:", style="bold yellow"),
+            "\n",
+            Text("🚀 standalone (default): ", style="cyan"),
+            Text("Single process mode - everything runs in one process", style="green"),
+            "\n",
+            Text("⚡️ distributed: ", style="cyan"),
+            Text("Multi-process mode with separate Celery worker", style="green"),
+            "\n\n",
+            Text("Current Mode: ", style="bold yellow"),
+            Text(mode, style="bold green"),
+            "\n\n",
+            Text("To switch modes:", style="bold yellow"),
+            "\n",
+            Text("  triggered start --mode standalone", style="cyan"),
+            "\n",
+            Text("  triggered start --mode distributed", style="cyan"),
+            "\n\n",
+            Text("Note: ", style="bold yellow"),
+            Text("In 'distributed' mode, you need to run the worker in a separate terminal:", style="green"),
+            "\n",
+            Text("  triggered worker", style="cyan")
+        ),
+        title="Startup Information",
+        border_style="blue",
+        padding=(1, 2)
+    )
     
-    console.print(server_info)
-    console.print("\n[bold blue]Starting server...[/bold blue]")
+    console.print(startup_info)
     
-    uvicorn.run("triggered.server:app", host=host, port=port, reload=reload)
+    if mode == ServerMode.distributed:
+        # In distributed mode, show instructions for worker
+        console.print("\n[yellow]Please run the worker in a separate terminal:[/yellow]")
+        console.print("  [cyan]triggered worker[/cyan]")
+    
+    # Start the server in both modes
+    console.print(f"\n[bold blue]Starting server in {mode.value} mode...[/bold blue]")
+    os.environ["TRIGGERED_START_WORKER"] = "false"
+    uvicorn.run(
+        "triggered.server:app",
+        host=host,
+        port=port,
+        reload=reload,
+        log_level="info"
+    )
 
 
 @app.command()
@@ -636,42 +708,117 @@ def worker():
     celery_app.worker_main(['worker', '--loglevel=INFO', '--pool=solo', '-Q', 'triggered'])
 
 @app.command()
-def server():
-    """Start the Triggered server in standalone mode (without Celery)."""
-    import uvicorn
-    from .logging_config import setup_logging
+def enable(
+    path: str = typer.Argument(
+        None,
+        help="Path to the trigger-action JSON file",
+        autocompletion=get_json_completion,
+    ),
+    log_level: str = typer.Option(
+        None,
+        "--log-level",
+        "-l",
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        callback=log_level_callback,
+    ),
+):
+    """Enable a trigger by moving it from disabled_trigger_actions to trigger_actions."""
+    if not path:
+        console.print("[red]Error: Missing required argument 'path'[/red]")
+        console.print("\n[bold]Usage:[/bold]")
+        console.print("  triggered enable <path>")
+        raise typer.Exit(1)
+
+    print_app_title()
     
-    setup_logging()
-    logger.info("Starting Triggered server in standalone mode...")
+    # Convert string path to Path object
+    path_obj = Path(path)
+    disabled_dir = Path("disabled_trigger_actions")
     
-    # Set environment variable to disable Celery worker
-    os.environ["TRIGGERED_START_WORKER"] = "false"
-    
-    # Start the server
-    uvicorn.run(
-        "triggered.server:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    # Check if file exists in disabled directory
+    if not path_obj.is_absolute():
+        source_path = disabled_dir / path_obj
+        if not source_path.exists():
+            console.print(f"[red]Error: Trigger not found in disabled directory: {path_obj}[/red]")
+            raise typer.Exit(1)
+            
+        # Move file to trigger_actions directory
+        dest_path = TRIGGER_ACTIONS_DIR / path_obj.name
+        try:
+            source_path.rename(dest_path)
+            console.print(f"[green]Successfully enabled trigger: {path_obj.name}[/green]")
+            logger.info(f"Enabled trigger: {path_obj.name}")
+        except Exception as e:
+            console.print(f"[red]Error enabling trigger: {str(e)}[/red]")
+            raise typer.Exit(1)
+    else:
+        console.print("[red]Error: Please provide a relative path[/red]")
+        raise typer.Exit(1)
 
 @app.command()
-def start():
-    """Start both the server and Celery worker (requires two terminal windows)."""
-    logger.info("""
-To start Triggered in full mode with Celery worker, you need to run two commands in separate terminals:
+def disable(
+    path: str = typer.Argument(
+        None,
+        help="Path to the trigger-action JSON file",
+        autocompletion=get_json_completion,
+    ),
+    log_level: str = typer.Option(
+        None,
+        "--log-level",
+        "-l",
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        callback=log_level_callback,
+    ),
+):
+    """Disable a trigger by moving it from trigger_actions to disabled_trigger_actions."""
+    if not path:
+        console.print("[red]Error: Missing required argument 'path'[/red]")
+        console.print("\n[bold]Usage:[/bold]")
+        console.print("  triggered disable <path>")
+        raise typer.Exit(1)
 
-Terminal 1:
-    triggered server
+    print_app_title()
+    
+    # Convert string path to Path object
+    path_obj = Path(path)
+    disabled_dir = Path("disabled_trigger_actions")
+    
+    # First try TRIGGER_ACTIONS_DIR
+    if not path_obj.is_absolute():
+        source_path = TRIGGER_ACTIONS_DIR / path_obj
+        if source_path.exists():
+            # Move file to disabled directory
+            dest_path = disabled_dir / path_obj.name
+            try:
+                source_path.rename(dest_path)
+                console.print(f"[green]Successfully disabled trigger: {path_obj.name}[/green]")
+                logger.info(f"Disabled trigger: {path_obj.name}")
+                return
+            except Exception as e:
+                console.print(f"[red]Error disabling trigger: {str(e)}[/red]")
+                raise typer.Exit(1)
 
-Terminal 2:
-    triggered worker
+    # Then try EXAMPLES_DIR
+    if not path_obj.is_absolute():
+        source_path = EXAMPLES_DIR / path_obj
+        if source_path.exists():
+            # Move file to disabled directory
+            dest_path = disabled_dir / path_obj.name
+            try:
+                source_path.rename(dest_path)
+                console.print(f"[green]Successfully disabled trigger: {path_obj.name}[/green]")
+                logger.info(f"Disabled trigger: {path_obj.name}")
+                return
+            except Exception as e:
+                console.print(f"[red]Error disabling trigger: {str(e)}[/red]")
+                raise typer.Exit(1)
 
-Alternatively, you can run just the server in standalone mode:
-    triggered server
-    """)
-
+    # If we get here, the file wasn't found
+    console.print(f"[red]Error: Trigger not found: {path_obj}[/red]")
+    console.print(f"Checked in:")
+    console.print(f"  - {TRIGGER_ACTIONS_DIR}")
+    console.print(f"  - {EXAMPLES_DIR}")
+    raise typer.Exit(1)
 
 if __name__ == "__main__":  # pragma: no cover
     app() 

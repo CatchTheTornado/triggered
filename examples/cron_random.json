@@ -1,0 +1,22 @@
+{
+  "trigger": {
+    "type": "cron",
+    "config": {
+      "name": "every-1-minute",
+      "expression": "* */1 * * * *",
+      "timezone": "UTC"
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "name": "random-number-generator",
+      "prompt": "Generate a random number between 1 and 100 using the random_number tool. Then, if the number is greater than 50, trigger the shell command to announce it.",
+      "tools": ["random_number"]
+    }
+  },
+  "params": {
+    "min": 1,
+    "max": 100
+  }
+} 
