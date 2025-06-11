@@ -1502,3 +1502,48 @@ Example with all types of variables:
   }
 }
 ```
+
+### Webhook Call Action Variables
+
+The webhook call action supports variable substitution in URLs, headers, and payloads. Variables can be referenced using the `${varName}` syntax and are resolved in the following order:
+
+1. Environment variables: `${ENV_VAR:-default}`
+   - Use `:-` to specify a default value if the environment variable is not set
+   - Example: `http://${WEBHOOK_HOST:-localhost}:${WEBHOOK_PORT:-8000}/webhook`
+
+2. Trigger-action parameters: `${paramName}`
+   - Parameters defined in the `params` section of the configuration
+   - Example: `${AUTH_KEY}`
+
+3. Trigger data: `${dataName}`
+   - Data from the trigger context
+   - Example: `${trigger_name}`, `${data.message}`
+
+You can use variables in:
+- URL: `"url": "http://${HOST}/webhook/${ENDPOINT}"`
+- Headers: `"headers": { "X-Auth-Key": "${AUTH_KEY}" }`
+- Payload: 
+  - Forward entire trigger data: `"payload": "${data}"`
+  - Forward specific fields: `"payload": { "message": "${data.message}" }`
+  - Mix with static content: `"payload": { "status": "success", "data": "${data}" }`
+
+Example configuration:
+```json
+{
+  "action": {
+    "type": "webhook_call",
+    "config": {
+      "url": "http://${WEBHOOK_HOST:-localhost}:${WEBHOOK_PORT:-8000}/webhook",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Auth-Key": "${AUTH_KEY:-default-key}",
+        "X-Trigger-Name": "${trigger_name}"
+      },
+      "payload": "${data}"
+    }
+  },
+  "params": {
+    "AUTH_KEY": "your-secret-key"
+  }
+}
+```

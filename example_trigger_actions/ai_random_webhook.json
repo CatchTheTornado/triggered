@@ -1,0 +1,33 @@
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "random-number-check",
+      "prompt": "Generate a random number between 1 and 5 using the random_number tool. If the number is greater than 2, return true. Otherwise return false.",
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1",
+      "tools": ["random_number"]
+    }
+  },
+  "action": {
+    "type": "webhook_call",
+    "config": {
+      "name": "notify-on-high-number",
+      "url": "http://localhost:8000/webhook/test",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Auth-Key": "${AUTH_KEY}",
+        "X-Trigger-Name": "${trigger_name}"
+      },
+      "payload": {
+        "trigger_result": "${trigger}",
+        "reason": "${reason}",
+        "message": "Random number check completed"
+      }
+    }
+  },
+  "params": {
+    "AUTH_KEY": "your-secret-key"
+  }
+} 
