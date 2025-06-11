@@ -1,114 +1,157 @@
 # 🚀 Triggered
 
-**Crontab on AI steroids with an API**. Use AI prompts and tools, time-tables, file-system watchers to trigger actions you like, when it's suitable. Super easy to use and manage ⚡️
+**Automation at the speed of thought** – run *anything* (shell, TypeScript, AI, webhooks) in response to cron schedules, file‑system events, HTTP calls, or smart AI checks.
 
-<div align="center">
-  <img src=".readme_assets/0.png" alt="Triggered Hero Image" width="800"/>
-</div>
+> Like crontab, but with **super‑powers** ⚡️
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <img src=".readme_assets/1.png" alt="Triggered CLI" width="400"/>
-        <br/>
-        <em>Interactive CLI for creating and managing triggers</em>
-      </td>
-      <td align="center">
-        <img src=".readme_assets/2.png" alt="Triggered Dashboard" width="400"/>
-        <br/>
-        <em>Running AI triggers from CLI or via Web API</em>
-      </td>
-    </tr>
-  </table>
-</div>
+---
 
-## ✨ Features
+## ✨ Why Triggered?
 
-- 🤖 AI-powered triggers that can monitor and react to various conditions
-- ⚡️ Flexible action system for executing tasks when triggers fire
-- 🌐 FastAPI server for managing triggers and handling webhooks
-- 🖥️ Rich CLI interface with interactive trigger creation
-- 📝 Comprehensive logging system with both console and file output
-- 🔌 Support for various trigger types (e.g., AI-based, webhook-based)
-- 🛠️ Support for various action types (e.g., shell commands, TypeScript scripts)
-- 🔍 Auto-discovery of custom components
-- 🧩 Pluggable architecture for easy extension
+* 🤖 **AI‑powered triggers** — let an LLM (plus optional Python/JS *tools*) decide *when* to fire.
+* 🔔 **Any signal** — cron schedules, folder changes, incoming webhooks, or smart AI checks.
+* ⚡ **Any reaction** — shell commands, TypeScript scripts (inside Docker), AI calls, outbound webhooks.
+* 🖥️ **CLI & REST API** — manage everything in the terminal **or** browse `http://localhost:8000/docs`.
+* 📦 **One‑command install** — `pip install triggered` or `docker run …` and you're live.
+* 🧩 **Pluggable** — ship new triggers/actions/tools with a few lines of Python.
 
+---
 
-## Development Setup
+## �� Quick install (⟨ 1 min)
 
-1. Clone the repository:
 ```bash
+# 1. Grab the source
 git clone https://github.com/CatchTheTornado/triggered.git
 cd triggered
-```
 
-2. Create and activate a virtual environment:
-```bash
+# 2. Isolate dependencies
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+source venv/bin/activate      # Windows ➜ venv\Scripts\activate
 
-3. Install development dependencies:
-```bash
-pip install -e ".[dev]"
-```
+# 3. Editable install + dev extras
+pip install -e '.[dev]'
 
-4. Install pre-commit hooks:
-```bash
+# 4. Pre‑commit goodness
 pre-commit install
 ```
 
-## Quick Start
+---
 
-1. Create a trigger-action definition:
+## ⚡ 3‑step Quick Start
+
 ```bash
+# 1. Craft your first trigger–action interactively
 triggered add
-```
-This will start an interactive prompt to create a new trigger-action configuration.
 
-2. Or create a trigger-action from JSON configs:
+# 2. Launch the engine
+triggered start        # FastAPI UI → http://localhost:8000/docs
+
+# 3. Watch it work!
+triggered ls           # list running triggers
+```
+
+Feeling lazy? Drop a ready JSON into `enabled_trigger_actions/` and just `triggered start`.
+
+Run a trigger once:
 ```bash
-triggered add --trigger-type ai --action-type shell-command --trigger-config trigger.json --action-config action.json
+triggered run example_trigger_actions/random_trigger.json
 ```
 
-3. List available triggers:
+---
+
+## 🧠 Concepts in 60 sec
+
+```
+┌───────────┐        fires        ┌──────────┐
+│  Trigger  │ ───────────────────▶│  Action  │
+└───────────┘                    └──────────┘
+   cron?          passes data        shell?
+   file?                               TS?
+   webhook?                            AI?
+   AI prompt?                      webhook?
+```
+
+A **trigger** decides *when* to act. An **action** defines *what* to do.
+
+---
+
+## Built‑in Triggers
+
+| Type             | Fires when…                            | One‑liner setup          |
+| ---------------- | -------------------------------------- | ------------------------ |
+| `cron`           | a cron/interval is reached             | `schedule:"*/5 * * * *"` |
+| `folder-monitor` | files created/changed/deleted          | `path:"/tmp/**/*.log"`   |
+| `webhook`        | an HTTP request hits `/webhook/<name>` | `auth_key:"secret"`      |
+| `ai`             | an LLM prompt returns `true`           | `prompt:"Is CPU>80 %?"`  |
+
+### Example – add a Cron trigger
+
 ```bash
-triggered ls
+triggered add \
+  --trigger-type cron \
+  --trigger-config '{"schedule":"0 9 * * *"}' \
+  --action-type shell-command \
+  --action-config '{"command":"backup.sh"}'
 ```
 
-4. Check available components and loaded triggers:
+### Example – add a Folder‑monitor trigger
+
 ```bash
-triggered check
+triggered add --trigger-type folder-monitor \
+  --trigger-config '{"path":"/var/www","events":["created"]}' \
+  --action-type webhook_call \
+  --action-config '{"url":"https://example.com/deploy"}'
 ```
-This command displays:
-- Available trigger types and their descriptions
-- Available action types and their descriptions
-- Currently loaded trigger-action JSON files from enabled_trigger_actions and example_trigger_actions directories
 
-5. Start the server:
+### Example – add a Webhook trigger
+
 ```bash
-triggered start
+triggered add --trigger-type webhook \
+  --trigger-config '{"path":"/build","auth_key":"my-key"}' \
+  --action-type typescript-script \
+  --action-config '{"path":"scripts/deploy.ts"}'
 ```
-This will start the FastAPI server with default settings (host: 0.0.0.0, port: 8000).
 
-You can customize the server settings:
+### Example – add an AI trigger (with tools)
+
 ```bash
-triggered start --host localhost --port 3000
+triggered add --trigger-type ai \
+  --trigger-config '{"prompt":"Is VS Code running?","tools":["process_checker"]}' \
+  --action-type ai \
+  --action-config '{"prompt":"VS Code is running – continue."}'
 ```
 
-Enable auto-reload during development:
-```bash
-triggered start --reload
-```
+---
 
-6. Run a trigger once:
-```bash
-triggered run triggers/your-trigger.json
-```
+## Built‑in Actions
 
-## Configuration
+| Type                | Does…                                       | Idea              |
+| ------------------- | ------------------------------------------- | ----------------- |
+| `shell-command`     | runs a local shell command                  | restart a service |
+| `typescript-script` | executes a TypeScript file in Node (Docker) | call an SDK       |
+| `ai`                | gets an AI answer using prompt + tools      | summarise logs    |
+| `webhook_call`      | POST/GET to an external service             | notify Slack      |
+
+## Documentation
+
+### Table of Contents
+
+1. [Environment Variables](#environment-variables)
+   - [Logging Configuration](#logging-configuration)
+   - [Path Configuration](#path-configuration)
+   - [Module Configuration](#module-configuration)
+   - [Data and Broker Configuration](#data-and-broker-configuration)
+
+2. [Message Broker Configuration](#message-broker-configuration)
+   - [Required Dependencies](#required-dependencies)
+   - [Available Backends](#available-backends)
+     - [SQLite (Default)](#1-sqlite-default)
+     - [Redis](#2-redis)
+     - [RabbitMQ](#3-rabbitmq)
+     - [Memory](#4-memory-not-recommended-for-production)
+   - [Backend Comparison](#backend-comparison)
+   - [Production Recommendations](#production-recommendations)
+   - [Troubleshooting](#troubleshooting)
 
 ### Environment Variables
 
@@ -462,7 +505,7 @@ The application uses a comprehensive logging system:
            return result
    ```
 
-### Creating Custom Components
+### Extending triggered
 
 #### Auto-Discovery of Components
 

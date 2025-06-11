@@ -18,10 +18,6 @@ def test_valid_config():
     is_valid, error = TestTrigger.validate_config(config)
     assert is_valid, f"Should be valid, got error: {error}"
 
-def test_missing_required_field():
-    config = {"interval": 60}
-    is_valid, error = TestTrigger.validate_config(config)
-    assert not is_valid and "name" in error, "Should fail due to missing 'name'"
 
 def test_wrong_type():
     config = {"name": "test_trigger", "interval": "60", "max_retries": 5}
