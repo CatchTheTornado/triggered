@@ -20,7 +20,7 @@ class TypeScriptScriptConfig(BaseConfig):
 class TypeScriptScriptAction(Action):
     """Action that runs a TypeScript script inside a Docker container.
     
-    The script can access trigger data through the global `triggerData` variable.
+    The script should export a default function that receives trigger data.
     Example:
     ```typescript
     interface TriggerData {
@@ -28,8 +28,9 @@ class TypeScriptScriptAction(Action):
         message: string;
     }
     
-    declare const triggerData: TriggerData;
-    console.log(`Number: ${triggerData.number}`);
+    export default function(triggerData: TriggerData) {
+        console.log(`Number: ${triggerData.number}`);
+    }
     ```
     """
     config_model = TypeScriptScriptConfig
@@ -65,15 +66,39 @@ class TypeScriptScriptAction(Action):
         with open(trigger_data_file, "w") as f:
             json.dump(ctx.data, f)
         
+        # Create a tsconfig.json file
+        tsconfig_file = script_path.parent / "tsconfig.json"
+        with open(tsconfig_file, "w") as f:
+            json.dump({
+                "compilerOptions": {
+                    "target": "ES2020",
+                    "module": "CommonJS",
+                    "moduleResolution": "node",
+                    "esModuleInterop": True,
+                    "skipLibCheck": True,
+                    "forceConsistentCasingInFileNames": True,
+                    "strict": True,
+                    "types": ["node"]
+                }
+            }, f, indent=2)
+        
         # Create a wrapper script that loads the trigger data and runs the main script
         wrapper_script = script_path.parent / "wrapper.ts"
         with open(wrapper_script, "w") as f:
             f.write("""
+/// <reference types="node" />
+
 // Load trigger data
 const triggerData = require('./trigger_data.json');
 
-// Run the main script
-require('./%s');
+// Run the main script with trigger data
+const script = require('./%s');
+if (typeof script.default === 'function') {
+    script.default(triggerData);
+} else {
+    console.error('Script must export a default function that accepts trigger data');
+    process.exit(1);
+}
 """ % script_path.name)
         
         # Build docker command (assumes docker is installed and daemon running)
@@ -81,8 +106,11 @@ require('./%s');
             "docker run --rm "
             f"-v {script_path.parent}:/app "
             "-w /app node:20-alpine "
-            "sh -c \"npm install -g ts-node typescript >/dev/null 2>&1 && "
-            f"ts-node wrapper.ts\""
+            "sh -c \""
+            "npm install -g ts-node typescript @types/node && "
+            "export PATH=$PATH:/usr/local/bin && "
+            "ts-node --project tsconfig.json wrapper.ts"
+            "\""
         )
         
         try:
@@ -103,4 +131,6 @@ require('./%s');
             if trigger_data_file.exists():
                 trigger_data_file.unlink()
             if wrapper_script.exists():
-                wrapper_script.unlink() 
+                wrapper_script.unlink()
+            if tsconfig_file.exists():
+                tsconfig_file.unlink() 
