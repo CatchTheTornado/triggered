@@ -28,6 +28,29 @@ You can mix and match them to create powerful automations.
 | ⏰ **Time (Cron)** - "Is it 9 AM on a Monday?"            | 📞 **Webhook Call** - Send a notification to Slack.    |
 
 
+```mermaid
+flowchart LR
+  subgraph Triggers
+    cron[cron]
+    folder[folder-monitor]
+    webhook[webhook]
+    ai[AI prompt]
+  end
+  subgraph Actions
+    shell[shell-command]
+    ts[TypeScript script]
+    aiAction[AI action]
+    hook[webhook_call]
+  end
+  cron -- fires --> shell
+  cron --> ts
+  folder --> shell
+  folder --> aiAction
+  webhook --> hook
+  ai --> aiAction
+```
+
+
 <div align="center">
   <img src=".readme_assets/0.png" alt="Triggered Hero Image" width="800"/>
 </div>
