@@ -3,7 +3,7 @@
     "type": "cron",
     "config": {
       "name": "every-20-seconds",
-      "expression": "*/20 * * * * *",
+      "expression": "* * * * * */20",
       "timezone": "UTC"
     }
   },

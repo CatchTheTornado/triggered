@@ -28,7 +28,7 @@ class CronTrigger(Trigger):
             ConfigField(
                 name="expression",
                 type="string",
-                description="Cron expression (e.g. '* * * * *')",
+                description="Cron expression (e.g. '* * * * * *' for seconds, '* * * * *' for minutes)",
                 required=True
             ),
             ConfigField(
@@ -42,7 +42,7 @@ class CronTrigger(Trigger):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.expr: str = config["expression"]  # e.g. "* * * * *"
+        self.expr: str = config["expression"]  # e.g. "* * * * * *" for seconds
         self.timezone = zoneinfo.ZoneInfo(config.get("timezone", "UTC"))
         self._iter = croniter(self.expr, _dt.datetime.now(self.timezone))
 
@@ -50,8 +50,8 @@ class CronTrigger(Trigger):
         while True:
             now = _dt.datetime.now(self.timezone)
             next_time = self._iter.get_next(_dt.datetime)
-            print(f"Next time: {next_time}")
             delay = (next_time - now).total_seconds()
+            logger.info(f"Crontab - next running time: now: {now} next: {next_time}, delay: {delay}")
             if delay > 0:
                 await asyncio.sleep(delay)
             ctx = TriggerContext(trigger_name=self.name)
