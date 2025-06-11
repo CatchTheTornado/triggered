@@ -1,0 +1,19 @@
+{
+  "trigger": {
+    "type": "webhook",
+    "config": {
+      "name": "webhook-test",
+      "route": "/webhook/test",
+      "auth_key": "test-key"
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "name": "echo-payload",
+      "prompt": "Echo back the webhook payload: ${payload}",
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1"
+    }
+  }
+} 

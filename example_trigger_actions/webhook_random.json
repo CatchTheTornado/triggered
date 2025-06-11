@@ -1,0 +1,20 @@
+{
+  "trigger": {
+    "type": "webhook",
+    "config": {
+      "name": "webhook-random",
+      "route": "/webhook/random",
+      "auth_key": "your-secret-key"
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "name": "random-with-payload",
+      "prompt": "Generate a random number between 1 and 100 using the random_number tool. Then include this message from the webhook payload: ${payload.message}. Format your response as: 'Random number: X. Message: Y'",
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1",
+      "tools": ["random_number"]
+    }
+  }
+} 

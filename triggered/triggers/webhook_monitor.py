@@ -15,6 +15,7 @@ class WebHookMonitorTrigger(Trigger):
 
     Config keys:
     - route: str, URL path (e.g. "/hooks/my-trigger")
+    - auth_key: str, optional authentication key for the webhook
     """
 
     @classmethod
@@ -32,12 +33,19 @@ class WebHookMonitorTrigger(Trigger):
                 type="string",
                 description="URL path for the webhook (e.g. '/hooks/my-trigger')",
                 required=False
+            ),
+            ConfigField(
+                name="auth_key",
+                type="string",
+                description="Authentication key for the webhook",
+                required=False
             )
         ])
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.route: str = config.get("route", f"/hooks/{self.name}")
+        self.auth_key: str = config.get("auth_key", "")
         self._queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
 
     async def watch(self, queue_put):
@@ -45,7 +53,10 @@ class WebHookMonitorTrigger(Trigger):
             payload = await self._queue.get()
             ctx = TriggerContext(
                 trigger_name=self.name,
-                data={"payload": payload},
+                data={
+                    "payload": payload.get("body", {}),
+                    "headers": payload.get("headers", {})
+                },
             )
             await queue_put(ctx)
 

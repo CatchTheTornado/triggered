@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.routing import APIRoute
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response
 try:
     from opentelemetry import trace  # type: ignore
     from opentelemetry.instrumentation.fastapi import (  # type: ignore
@@ -121,15 +124,51 @@ class RuntimeManager:
             if hasattr(trigger, "route") and hasattr(trigger, "enqueue"):
                 route_path = getattr(trigger, "route")
 
-                async def _handler(request: Request, tg=trigger):  # noqa: D401
-                    payload = await request.json()
-                    await tg.enqueue(payload)
-                    return {"status": "queued"}
-
                 # Avoid re-registering the same path
                 existing_paths = {r.path for r in app.router.routes}
                 if route_path not in existing_paths:
-                    app.post(route_path)(_handler)
+                    # Create a closure to capture the trigger instance
+                    webhook_trigger = trigger  # Capture the trigger instance
+
+                    class WebhookRoute(APIRoute):
+                        def get_route_handler(self):
+                            async def handler(request: StarletteRequest) -> Response:
+                                try:
+                                    # Get the request body
+                                    body = await request.json()
+                                    headers = dict(request.headers)
+                                    # Remove any non-serializable headers
+                                    headers = {k: v for k, v in headers.items() if isinstance(v, (str, int, float, bool))}
+                                    
+                                    # Create payload
+                                    payload = {
+                                        "body": body,
+                                        "headers": headers
+                                    }
+                                    
+                                    # Enqueue the payload using the captured webhook trigger
+                                    await webhook_trigger.enqueue(payload)
+                                    
+                                    return Response(
+                                        content=json.dumps({"status": "queued"}),
+                                        media_type="application/json"
+                                    )
+                                except Exception as e:
+                                    logger.error(f"Error handling webhook request: {str(e)}", exc_info=True)
+                                    return Response(
+                                        content=json.dumps({"error": str(e)}),
+                                        status_code=500,
+                                        media_type="application/json"
+                                    )
+                            return handler
+
+                    # Create a route with the custom route class
+                    route = WebhookRoute(
+                        path=route_path,
+                        endpoint=lambda: None,  # Dummy endpoint
+                        methods=["POST"]
+                    )
+                    app.router.routes.append(route)
 
     async def _dispatcher(self):
         while True:

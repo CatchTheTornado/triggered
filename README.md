@@ -1265,7 +1265,51 @@ Common status codes:
 - 400: Bad Request
 - 404: Not Found
 - 500: Internal Server Error
+
+### Webhook Examples
+
+Here's an example of a webhook trigger that generates a random number and includes the webhook payload in the response:
+
+```json
+{
+  "trigger": {
+    "type": "webhook",
+    "config": {
+      "name": "webhook-random",
+      "path": "/webhook/random",
+      "auth_key": "your-secret-key"
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "name": "random-with-payload",
+      "prompt": "Generate a random number between 1 and 100 using the random_number tool. Then include this message from the webhook payload: ${payload}. Format your response as: 'Random number: X. Message: Y'",
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1",
+      "tools": ["random_number"]
+    }
+  }
+}
 ```
+
+To test this webhook, you can use curl:
+
+```bash
+curl -X POST http://localhost:8000/webhook/random \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Key: your-secret-key" \
+  -d '{
+    "payload": "Hello from webhook!"
+  }'
+```
+
+The AI action will:
+1. Generate a random number using the `random_number` tool
+2. Include the message from the webhook payload
+3. Return a response like: "Random number: 42. Message: Hello from webhook!"
+
+The webhook trigger passes the entire request body as `payload` in the trigger data, which can be accessed in the AI prompt using `${payload}`.
 
 ## Running the Server
 
