@@ -103,6 +103,24 @@ triggered start
 ```
 This will start the FastAPI server with default settings (host: 0.0.0.0, port: 8000).
 
+
+**Note:** By default, all the examples from the `example_trigger_actions` will start processing - this could be a pretty messy regarding the console display :)
+
+You can disable the examples by running the:
+
+```bash
+triggered disable ai_random_ts.json
+triggered disable ai_random_webhook.json
+triggered disable config_demo.json
+triggered disable cron_random.json
+triggered disable random_trigger.json
+triggered disable tmp_file_analyzer.json
+triggered disable vscode_monitor.json
+triggered disable webhook_random.json
+triggered disable webhook_test.json
+```
+
+
 You can customize the server settings:
 ```bash
 triggered start --host localhost --port 3000
@@ -118,7 +136,13 @@ triggered start --reload
 triggered run random_trigger.json
 ```
 
+There are some pretty cool examples included so you can test them one by one by running:
 
+```bash
+triggered run ai_random_ts.json
+triggered run random_trigger.json
+triggered run vscode_monitor.json
+```
 
 ## Development
 
@@ -147,6 +171,15 @@ pytest
 ```
 
 
+## TODO / Roadmap
+
+- [ ] MCP support
+- [ ] More examples: Slack trigger, GMail trigger ...
+- [ ] Docker setup for distributed run (with Celery)
+- [ ] Web API Security improvements
+- [ ] Simple Web GUI for displaying the running `trigger_actions`
+- [ ] Simple Web GUI for adding `trigger_actions`
+
 ## Documentation
 
 - [Configuration and ENV](./docs/configuration.md)
@@ -157,6 +190,10 @@ pytest
 - [Adding custom AI functions/tools](./docs/ai-tools.md)
 - [Web API documentation](./docs/api.md)
 
+
+## Contributting
+
+Anyone is invited! Please read the - [Extending - adding custom actions and triggers tutorial](./docs/extending.md) which is a great idea to contribute - by adding next default components to the platform.
 
 ## License
 
