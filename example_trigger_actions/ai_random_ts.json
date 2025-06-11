@@ -1,0 +1,18 @@
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "name": "random-number-generator",
+      "prompt": "Generate a random number between 1 and 100 using the random_number tool. Return the number and a message about whether it's high or low.",
+      "model": "openai/gpt-4o",
+      "api_base": "https://api.openai.com/v1",
+      "tools": ["random_number"]
+    }
+  },
+  "action": {
+    "type": "typescript_script",
+    "config": {
+      "path": "scripts/print_random.ts"
+    }
+  }
+} 

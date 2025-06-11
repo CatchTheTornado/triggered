@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class ShellCommandConfig(BaseConfig):
     """Configuration model for shell command action."""
-    command: str = Field(description="Shell command to execute (can use {var} for variable substitution)")
+    command: str = Field(description="Shell command to execute (supports ${var} substitution)")
 
 
 @register_action("shell")
@@ -20,7 +20,7 @@ class ShellCommandAction(Action):
     inside a sandboxed container. Here we simply spawn a subprocess.
 
     Config keys:
-    - command: str
+    - command: str (supports ${var} substitution)
     """
     config_model = ShellCommandConfig
 
@@ -31,13 +31,22 @@ class ShellCommandAction(Action):
             ConfigField(
                 name="command",
                 type="string",
-                description="Shell command to execute (can use {var} for variable substitution)",
+                description="Shell command to execute (supports ${var} substitution)",
                 required=True
             )
         ])
 
     async def execute(self, ctx: TriggerContext) -> dict:  # noqa: D401
-        command: str = self.config.command.format(**ctx.data)
+        # First resolve environment variables
+        command = ctx.resolve_env_vars(self.config.command)
+        
+        # Then resolve params and data
+        try:
+            command = command.format(**ctx.params, **ctx.data)
+        except KeyError as e:
+            # If a variable is not found, keep the original ${var} in the string
+            logger.warning(f"Variable {e} not found in context")
+            
         logger.debug("Executing shell command: %s", command)
         proc = await asyncio.create_subprocess_shell(
             command,
