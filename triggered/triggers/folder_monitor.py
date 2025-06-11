@@ -103,9 +103,6 @@ class FolderMonitorTrigger(Trigger):
                     if filepath not in new_snapshot:
                         changed_files.append((filepath, "deleted"))
                 
-                # Update snapshot
-                self._snapshot = new_snapshot
-                
                 # Create context for each changed file
                 for filepath, event in changed_files:
                     if event in self.events:
@@ -120,5 +117,5 @@ class FolderMonitorTrigger(Trigger):
                         )
                         await queue_put(ctx)
 
-            ctx = TriggerContext(trigger_name=self.name)
-            await queue_put(ctx) 
+                # Update snapshot
+                self._snapshot = new_snapshot 

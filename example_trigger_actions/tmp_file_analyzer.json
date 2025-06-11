@@ -13,7 +13,7 @@
     "type": "ai",
     "config": {
       "name": "file-analyzer",
-      "prompt": "Based on the filename '${filename}', analyze what this file might be used for. Consider common file patterns, extensions, and naming conventions. Provide a brief explanation of the likely purpose of this file.",
+      "prompt": "Based on the filename '${filepath}', analyze what this file might be used for. The file was ${data.event} at path ${data.filepath}. Consider common file patterns, extensions, and naming conventions. Provide a brief explanation of the likely purpose of this file.",
       "model": "openai/gpt-4o",
       "api_base": "https://api.openai.com/v1"
     }
