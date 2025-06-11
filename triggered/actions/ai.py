@@ -36,7 +36,7 @@ class AIAction(Action):
             ConfigField(
                 name="prompt",
                 type="string",
-                description="AI prompt (can use ${var} for variable substitution)",
+                description="AI prompt (can use ${var} for variable substitution from env vars, params, or trigger data)",
                 required=True
             ),
             ConfigField(
@@ -81,6 +81,15 @@ class AIAction(Action):
         try:
             # Replace variables in the prompt with context data
             prompt = self.config.prompt
+            
+            # Replace environment variables
+            prompt = ctx.resolve_env_vars(prompt)
+            
+            # Replace params from config
+            for key, value in ctx.params.items():
+                prompt = prompt.replace(f"${{{key}}}", str(value))
+            
+            # Replace trigger data
             for key, value in ctx.data.items():
                 prompt = prompt.replace(f"${{{key}}}", str(value))
 

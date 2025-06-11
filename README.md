@@ -1302,3 +1302,78 @@ For more details about second-based scheduling, see [croniter documentation](htt
 ## License
 
 MIT License
+
+### Variable Substitution in AI Prompts
+
+AI triggers and actions support variable substitution in prompts using the `${var}` syntax. Variables can come from three sources:
+
+1. Environment Variables:
+```json
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "prompt": "Check if the API key ${API_KEY} is valid"
+    }
+  }
+}
+```
+
+2. Global Parameters:
+```json
+{
+  "trigger": {
+    "type": "ai",
+    "config": {
+      "prompt": "Analyze the file ${filename}"
+    }
+  },
+  "params": {
+    "filename": "example.txt"
+  }
+}
+```
+
+3. Trigger Data (for AI actions):
+```json
+{
+  "trigger": {
+    "type": "folder-monitor",
+    "config": {
+      "path": "/tmp"
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "prompt": "Based on the filename '${filename}', analyze what this file might be used for. The file was ${event}."
+    }
+  }
+}
+```
+
+Variables are resolved in the following order:
+1. Environment variables (e.g., `${API_KEY}`)
+2. Global parameters from the config (e.g., `${filename}`)
+3. Trigger data passed to the action (e.g., `${event}`)
+
+Example with all types of variables:
+```json
+{
+  "trigger": {
+    "type": "folder-monitor",
+    "config": {
+      "path": "/tmp"
+    }
+  },
+  "action": {
+    "type": "ai",
+    "config": {
+      "prompt": "Analyze file '${filename}' in ${ENV_NAME} environment. The file was ${event} and should be processed with priority ${priority}."
+    }
+  },
+  "params": {
+    "priority": "high"
+  }
+}
+```
