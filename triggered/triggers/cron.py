@@ -2,13 +2,14 @@ import asyncio
 import datetime as _dt
 from typing import Dict, Any
 import zoneinfo
-
+import logging
 from croniter import croniter
 
 from ..core import Trigger, TriggerContext
 from ..registry import register_trigger
 from ..config_schema import ConfigSchema, ConfigField
 
+logger = logging.getLogger(__name__)
 
 @register_trigger("cron")
 class CronTrigger(Trigger):

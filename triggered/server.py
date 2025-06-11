@@ -34,7 +34,7 @@ from .queue import app as celery_app, execute_action
 from .registry import get_trigger
 from .logging_config import logger
 
-TRIGGER_ACTIONS_DIR = Path(os.getenv("TRIGGERED_TRIGGER_ACTIONS_PATH", "trigger_actions"))
+TRIGGER_ACTIONS_DIR = Path(os.getenv("TRIGGERED_TRIGGER_ACTIONS_PATH", "enabled_trigger_actions"))
 TRIGGER_ACTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Environment variable to control whether to start the Celery worker
@@ -90,7 +90,7 @@ class RuntimeManager:
                 logger.error("Failed to load trigger file %s: %s", file, exc)
 
         # Then check EXAMPLES_DIR for any files not already loaded
-        EXAMPLES_DIR = Path(os.getenv("TRIGGERED_EXAMPLES_PATH", "examples"))
+        EXAMPLES_DIR = Path(os.getenv("TRIGGERED_EXAMPLES_PATH", "example_trigger_actions"))
         if EXAMPLES_DIR.exists():
             for file in EXAMPLES_DIR.glob("*.json"):
                 try:
