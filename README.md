@@ -87,7 +87,7 @@ triggered check
 This command displays:
 - Available trigger types and their descriptions
 - Available action types and their descriptions
-- Currently loaded trigger-action JSON files
+- Currently loaded trigger-action JSON files from enabled_trigger_actions and example_trigger_actions directories
 
 5. Start the server:
 ```bash
@@ -116,8 +116,8 @@ triggered run triggers/your-trigger.json
 
 - `TRIGGERED_LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 - `TRIGGERED_LOGS_PATH`: Set the path for log files (default: "logs")
-- `TRIGGERED_TRIGGER_ACTIONS_PATH`: Set the path for trigger definitions (default: "trigger_actions")
-- `TRIGGERED_EXAMPLES_PATH`: Set the path for example trigger definitions (default: "examples")
+- `TRIGGERED_TRIGGER_ACTIONS_PATH`: Set the path for enabled trigger definitions (default: "enabled_trigger_actions")
+- `TRIGGERED_EXAMPLES_PATH`: Set the path for example trigger definitions (default: "example_trigger_actions")
 - `TRIGGERED_TRIGGERS_MODULE`: Set the Python module path for trigger implementations (default: "triggered.triggers")
 - `TRIGGERED_ACTIONS_MODULE`: Set the Python module path for action implementations (default: "triggered.actions")
 - `TRIGGERED_TOOLS_MODULE`: Set the Python module path for tool implementations (default: "triggered.tools")
@@ -574,6 +574,10 @@ triggered/
 ├── server.py        # FastAPI server
 ├── cli.py           # CLI interface
 └── logging_config.py # Logging configuration
+
+enabled_trigger_actions/  # Active trigger definitions
+example_trigger_actions/  # Example trigger definitions
+disabled_trigger_actions/ # Disabled trigger definitions
 ```
 
 ### Testing
@@ -963,7 +967,7 @@ Response:
           "api_base": "https://api.openai.com/v1",
           "name": "vscode-monitor",
           "prompt": "Check if VS Code (Code Helper process) is running. If it is, trigger the action. If not, don't trigger.",
-          "custom_tools_path": "./examples/process_checker.py",
+          "custom_tools_path": "./example_trigger_actions/process_checker.py",
           "tools": ["process_checker"]
         }
       },
@@ -996,7 +1000,7 @@ Response:
       "api_base": "https://api.openai.com/v1",
       "name": "vscode-monitor",
       "prompt": "Check if VS Code (Code Helper process) is running. If it is, trigger the action. If not, don't trigger.",
-      "custom_tools_path": "./examples/process_checker.py",
+      "custom_tools_path": "./example_trigger_actions/process_checker.py",
       "tools": ["process_checker"]
     }
   },
@@ -1045,7 +1049,7 @@ curl -X POST http://localhost:8000/triggers \
         "model": "ollama/llama3.1",
         "name": "config-demo",
         "prompt": "Check if the configuration is working",
-        "custom_tools_path": "./examples/config_demo_tool.py",
+        "custom_tools_path": "./example_trigger_actions/config_demo_tool.py",
         "tools": ["config_demo"]
       }
     },
@@ -1072,7 +1076,7 @@ Response:
       "model": "ollama/llama3.1",
       "name": "config-demo",
       "prompt": "Check if the configuration is working",
-      "custom_tools_path": "./examples/config_demo_tool.py",
+      "custom_tools_path": "./example_trigger_actions/config_demo_tool.py",
       "tools": ["config_demo"]
     }
   },

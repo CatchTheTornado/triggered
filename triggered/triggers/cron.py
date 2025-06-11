@@ -1,6 +1,7 @@
 import asyncio
 import datetime as _dt
 from typing import Dict, Any
+import zoneinfo
 
 from croniter import croniter
 
@@ -28,17 +29,25 @@ class CronTrigger(Trigger):
                 type="string",
                 description="Cron expression (e.g. '* * * * *')",
                 required=True
+            ),
+            ConfigField(
+                name="timezone",
+                type="string",
+                description="Timezone for cron expression (e.g. 'UTC')",
+                default="UTC",
+                required=False
             )
         ])
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.expr: str = config["expression"]  # e.g. "* * * * *"
-        self._iter = croniter(self.expr, _dt.datetime.utcnow())
+        self.timezone = zoneinfo.ZoneInfo(config.get("timezone", "UTC"))
+        self._iter = croniter(self.expr, _dt.datetime.now(self.timezone))
 
     async def watch(self, queue_put):
         while True:
-            now = _dt.datetime.utcnow()
+            now = _dt.datetime.now(self.timezone)
             next_time = self._iter.get_next(_dt.datetime)
             delay = (next_time - now).total_seconds()
             if delay > 0:

@@ -32,10 +32,10 @@ from .logging_config import (
 app = typer.Typer(help="Triggered CLI")
 logger = setup_logging()
 
-EXAMPLES_DIR = Path(os.getenv("TRIGGERED_EXAMPLES_PATH", "examples"))
+EXAMPLES_DIR = Path(os.getenv("TRIGGERED_EXAMPLES_PATH", "example_trigger_actions"))
 EXAMPLES_DIR.mkdir(exist_ok=True)
 
-TRIGGER_ACTIONS_DIR = Path(os.getenv("TRIGGERED_TRIGGER_ACTIONS_PATH", "trigger_actions"))
+TRIGGER_ACTIONS_DIR = Path(os.getenv("TRIGGERED_TRIGGER_ACTIONS_PATH", "enabled_trigger_actions"))
 TRIGGER_ACTIONS_DIR.mkdir(exist_ok=True)
 
 
@@ -389,7 +389,7 @@ def add_trigger(
         )
         
         # Show available tools if AI trigger or action is selected
-        if trigger_type == "ai" or action_type == "ai_agent":
+        if trigger_type == "ai" or action_type == "ai":
             custom_tools_path = prompt_for_custom_tools()
             display_available_tools(custom_tools_path)
         

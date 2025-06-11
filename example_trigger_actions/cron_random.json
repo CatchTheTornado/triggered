@@ -2,8 +2,8 @@
   "trigger": {
     "type": "cron",
     "config": {
-      "name": "every-1-minute",
-      "expression": "* */1 * * * *",
+      "name": "every-20-seconds",
+      "expression": "*/20 * * * * *",
       "timezone": "UTC"
     }
   },
