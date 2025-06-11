@@ -13,6 +13,21 @@
 * 🧩 **Pluggable** — ship new triggers/actions/tools with a few lines of Python.
 
 
+Triggered lets you automate tasks by linking **Triggers** to **Actions**.
+
+  * **Triggers** watch for events.
+  * **Actions** are the tasks that run when a trigger fires.
+
+You can mix and match them to create powerful automations.
+
+| Triggers (The "If")                                      | Actions (The "Then")                                   |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| 🤖 **AI** - "Is my server's CPU usage too high?"         | 🧠 **AI Call** - "Summarize this log file for me."     |
+| 📂 **File System Monitor** - "Was a new file just added?" | 🐚 **Shell Command** - `echo "New file detected!"`     |
+| 🌐 **Webhook** - "Did I just receive a GitHub push?"      | 📜 **TypeScript** - Run a custom script in Docker. |
+| ⏰ **Time (Cron)** - "Is it 9 AM on a Monday?"            | 📞 **Webhook Call** - Send a notification to Slack.    |
+
+
 <div align="center">
   <img src=".readme_assets/0.png" alt="Triggered Hero Image" width="800"/>
 </div>
