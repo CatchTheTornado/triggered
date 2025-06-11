@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import json
+import os
 from pathlib import Path
 
 from ..core import Action, TriggerContext, BaseConfig
@@ -20,16 +21,24 @@ class TypeScriptScriptConfig(BaseConfig):
 class TypeScriptScriptAction(Action):
     """Action that runs a TypeScript script inside a Docker container.
     
-    The script should export a default function that receives trigger data.
+    The script should export a default function that receives trigger data, params, and env.
     Example:
     ```typescript
     interface TriggerData {
-        number: number;
-        message: string;
+        trigger: boolean;
+        reason: string;
     }
     
-    export default function(triggerData: TriggerData) {
-        console.log(`Number: ${triggerData.number}`);
+    interface ScriptContext {
+        data: TriggerData;
+        params: Record<string, any>;
+        env: Record<string, string>;
+    }
+    
+    export default function(context: ScriptContext) {
+        console.log(`Triggered: ${context.data.trigger}`);
+        console.log(`Params: ${JSON.stringify(context.params)}`);
+        console.log(`Env: ${JSON.stringify(context.env)}`);
     }
     ```
     """
@@ -47,7 +56,7 @@ class TypeScriptScriptAction(Action):
             )
         ])
 
-    async def execute(self, ctx: TriggerContext) -> None:  # noqa: D401
+    async def execute(self, ctx: TriggerContext) -> dict:  # noqa: D401
         # First resolve environment variables
         script_path = ctx.resolve_env_vars(self.config.path)
         
@@ -61,10 +70,14 @@ class TypeScriptScriptAction(Action):
         script_path = Path(script_path).expanduser().resolve()
         logger.debug("Executing TypeScript script in Docker: %s", script_path)
         
-        # Create a temporary file with the trigger data
-        trigger_data_file = script_path.parent / "trigger_data.json"
-        with open(trigger_data_file, "w") as f:
-            json.dump(ctx.data, f)
+        # Create a temporary file with the script context
+        context_file = script_path.parent / "script_context.json"
+        with open(context_file, "w") as f:
+            json.dump({
+                "data": ctx.data,
+                "params": ctx.params,
+                "env": dict(os.environ)
+            }, f)
         
         # Create a tsconfig.json file
         tsconfig_file = script_path.parent / "tsconfig.json"
@@ -82,21 +95,22 @@ class TypeScriptScriptAction(Action):
                 }
             }, f, indent=2)
         
-        # Create a wrapper script that loads the trigger data and runs the main script
+        # Create a wrapper script that loads the context and runs the main script
         wrapper_script = script_path.parent / "wrapper.ts"
         with open(wrapper_script, "w") as f:
             f.write("""
 /// <reference types="node" />
 
-// Load trigger data
-const triggerData = require('./trigger_data.json');
+// Load script context
+const context = require('./script_context.json');
+console.log('Debug - Script context:', JSON.stringify(context, null, 2));
 
-// Run the main script with trigger data
+// Run the main script with context
 const script = require('./%s');
 if (typeof script.default === 'function') {
-    script.default(triggerData);
+    script.default(context);
 } else {
-    console.error('Script must export a default function that accepts trigger data');
+    console.error('Script must export a default function that accepts context');
     process.exit(1);
 }
 """ % script_path.name)
@@ -123,13 +137,17 @@ if (typeof script.default === 'function') {
             if stdout:
                 logger.info("TypeScript stdout: %s", stdout.decode())
             if stderr:
-                logger.error("TypeScript stderr: %s", stderr.decode())
-            if proc.returncode != 0:
-                raise RuntimeError(f"TypeScript script failed with return code {proc.returncode}")
+                logger.info("TypeScript stderr: %s", stderr.decode())
+            
+            return {
+                "stdout": stdout.decode() if stdout else "",
+                "stderr": stderr.decode() if stderr else "",
+                "returncode": proc.returncode,
+            }
         finally:
             # Clean up the temporary files
-            if trigger_data_file.exists():
-                trigger_data_file.unlink()
+            if context_file.exists():
+                context_file.unlink()
             if wrapper_script.exists():
                 wrapper_script.unlink()
             if tsconfig_file.exists():

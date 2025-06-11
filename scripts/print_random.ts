@@ -1,12 +1,21 @@
 interface TriggerData {
-  number: number;
-  message: string;
+  trigger: boolean;
+  reason: string;
 }
 
-export default function(triggerData: TriggerData) {
+interface ScriptContext {
+  data: TriggerData;
+  params: Record<string, any>;
+  env: Record<string, string>;
+}
+
+export default function(context: ScriptContext) {
   console.log('🎲 Random Number Generator');
   console.log('------------------------');
-  console.log(`Number: ${triggerData.number}`);
-  console.log(`Message: ${triggerData.message}`);
+  console.log(`Triggered: ${context.data.trigger}`);
+  console.log(`Reason: ${context.data.reason}`);
+  console.log('------------------------');
+  console.log('Parameters:', JSON.stringify(context.params, null, 2));
+  console.log('Environment:', JSON.stringify(context.env, null, 2));
   console.log('------------------------');
 } 
